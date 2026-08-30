@@ -1,0 +1,11 @@
+graph LR
+    V[Version graph prompt schema model] --> F[Run synthetic fixture corpus]
+    F --> S[Score quality latency fallback and corrections]
+    S --> G{Safety gates pass}
+    G -->|yes| B{No required metric regressed}
+    B -->|yes| P[Pin versions and evidence]
+    G -->|no| D[Diagnose one failure class]
+    B -->|no| D
+    D --> R[Change one controlled variable]
+    R --> F
+    P --> N([Eligible for implementation review])

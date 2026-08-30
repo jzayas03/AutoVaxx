@@ -96,6 +96,8 @@ The MVP is a local desktop modular monolith. It does not include cloud services,
 10. Registry-readiness mapping and inspectable artifact for one verified PREIS profile version, without production transmission.
 11. Ollama structured-proposal adapter and whisper.cpp transcription adapter, both optional, local-only, and non-retentive for raw prompt/response/audio by default.
 
+Planning detail: [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md) defines the proposed Rust-owned assistance graph and synthetic evaluation loop. It is approved for planning only and does not authorize Phase 2 implementation.
+
 ### UX priorities
 
 - Keyboard-first and bilingual English/Spanish workflow.
