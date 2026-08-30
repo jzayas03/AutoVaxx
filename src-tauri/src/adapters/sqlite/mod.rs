@@ -114,11 +114,23 @@ impl Database {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: before connection open");
         let connection = Connection::open(&path)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after connection open");
         Self::apply_sqlcipher_key(&connection, key)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after key application");
         Self::configure(&connection, true)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after connection configuration");
         Self::migrate(&connection)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after migration");
         Self::assert_classification(&connection, "SYNTHETIC_ONLY")?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after classification check");
         Ok(Self {
             connection: Mutex::new(connection),
             path,
@@ -163,16 +175,24 @@ impl Database {
                 .collect::<String>(),
         );
         let pragma_value = Zeroizing::new(format!("x'{}'", hex_key.as_str()));
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: before key pragma");
         connection
             .pragma_update(None, "key", pragma_value.as_str())
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after key pragma");
         hex_key.zeroize();
         connection
             .pragma_update(None, "cipher_memory_security", "ON")
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after cipher memory security pragma");
         let cipher_version: String = connection
             .query_row("PRAGMA cipher_version", [], |row| row.get(0))
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        #[cfg(test)]
+        eprintln!("sqlcipher-test: after cipher version query");
         if cipher_version.is_empty() {
             return Err(AppError::Configuration);
         }
