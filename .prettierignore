@@ -6,3 +6,4 @@ pnpm-lock.yaml
 docs/
 src-tauri/gen/
 src-tauri/icons/
+.gstack/

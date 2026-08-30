@@ -1,0 +1,26 @@
+graph LR
+    S([Start]) --> C[Capture bounded local source]
+    C -->|audio| T[Transcribe locally]
+    C -->|typed text| E[Extract structured proposal]
+    T --> E
+    E -. one transient retry .-> E
+    E -->|response| V[Validate envelope and schema]
+    E -->|external timeout or cancel| Q[Abort request and quarantine provider]
+    E -->|owned child deadline| X[Terminate Windows Job Object]
+    E -->|unavailable OOM provider disk full| M[Manual entry fallback]
+    Q --> M
+    X --> M
+    V -->|valid| D[Run deterministic field validation]
+    V -->|malformed and repair unused| R[Build constrained repair request]
+    R --> E
+    V -->|repair exhausted| M
+    D -->|valid| H{Human review}
+    D -->|invalid| M
+    H -->|accept selected fields| A[Atomic audited draft revision]
+    H -->|correct manually| M
+    H -->|reject or cancel| K
+    A --> K[Delete ephemeral source and output]
+    M --> K
+    K --> Z([End])
+
+    W[Outside graph: clinical workflow remains unchanged]

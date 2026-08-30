@@ -161,8 +161,11 @@ The MVP target is a registry-ready record and inspectable export artifact. Live 
 - **FR-AI-004:** Reject non-loopback AI endpoints when a request contains patient data.
 - **FR-AI-005:** Do not give AI tools that write clinical records, change workflow state, authorize export, or access arbitrary files/network resources.
 - **FR-AI-006:** Do not persist prompts, model context, or raw model responses unless an approved feature explicitly requires it; if retained, treat them as PHI and store them encrypted with a retention policy.
+- **FR-AI-007:** Enforce an absolute provider deadline. Abort and quarantine externally provisioned providers; hard-terminate an app-owned child process tree after cooperative cancellation fails. Neither path may mutate clinical state or block manual documentation.
+- **FR-AI-008:** Verify the runtime model digest against the approved synthetic-evaluation manifest before patient-bearing inference and record the model digest plus prompt-template hash in minimum accepted-proposal provenance.
+- **FR-AI-009:** Route provider out-of-memory and isolated provider-runtime disk-full failures directly to manual fallback without retry/repair. Treat unknown/shared-volume or clinical persistence exhaustion as a blocking integrity failure.
 - **FR-SP-001:** Use a speech-provider interface with whisper.cpp as the initial provider.
-- **FR-SP-002:** Process audio locally and delete temporary audio after transcription, failure, cancellation, or crash recovery. The MVP does not retain raw recordings; any future retention is a separately approved feature and policy.
+- **FR-SP-002:** Process audio locally through bounded RAM or anonymous pipes when possible. If a temporary file is unavoidable, store only per-session encrypted ciphertext with restrictive ACLs and cryptographically erase the key before deletion and validated orphan cleanup. The MVP does not retain raw recordings; any future retention is a separately approved feature and policy.
 
 ### 6.9 Offline behavior
 
@@ -196,6 +199,8 @@ Targets are hypotheses until measured with representative, synthetic workflows:
 - Reduce median active documentation time by at least 50% compared with the facility's measured baseline.
 - Complete routine local saves within 250 ms at the 95th percentile on supported hardware, excluding model inference.
 - Open patient search results within one second at the 95th percentile for the expected single-facility dataset.
+- Establish and pass median and 95th-percentile time-to-fallback targets before Phase 2 exit so failed assistance releases the manual form without unacceptable delay.
+- Measure accepted-as-is rate, accepted-with-correction rate, and correction actions per accepted proposal in synthetic/usability evaluation; assistance must not add more correction work than the approved manual baseline.
 - Make every blocking item actionable from the workflow summary.
 - Support keyboard-first use and WCAG 2.2 AA-level accessibility as a release target.
 - Support English and Spanish user-facing workflows; clinical translations require review rather than machine-only translation.

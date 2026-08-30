@@ -128,8 +128,11 @@ HHS breach guidance says valid at-rest encryption should be consistent with NIST
 - Restrict model requests to the minimum context. Never expose the database, arbitrary filesystem, registry credentials, or application tools to the model.
 - Validate model output as untrusted data: schema, size, encoding, allowed fields, code values, and source/provenance.
 - Separate proposed values visually and structurally from accepted data. Human acceptance is an audited draft edit.
-- Do not persist raw prompts, interview text/transcripts, model responses, rejected proposals, or source spans after review by default. Retain only minimum provider/model/schema provenance, field names, reviewer disposition, and the resulting clinical revision reference.
-- Process speech locally. Use random non-identifying temp names, restrictive permissions, bounded file size/duration, validated formats, and guaranteed cleanup after success, failure, cancellation, and crash recovery. The MVP has no raw-audio retention feature.
+- Pin the approved provider/model digest and verify the runtime-reported digest at readiness and before the first patient-bearing assist session. A mismatch is policy denied; do not silently pull or substitute a model.
+- Enforce one absolute wall-clock deadline. Abort and quarantine a separately provisioned provider without killing the facility-managed service. A future app-owned child process must be isolated in a Windows Job Object and hard-terminated, with exit verified, if cooperative cancellation exceeds the deadline.
+- Route provider `OUT_OF_MEMORY` and provider-runtime `DISK_FULL` directly to manual fallback without retry or structural repair. Classify disk exhaustion as provider-side only after confirming that the failure is isolated and clinical persistence remains healthy; otherwise treat it as blocking `PERSISTENCE_FULL`. Never report a mutation as successful when durable storage is unavailable.
+- Do not persist raw prompts, interview text/transcripts, model responses, rejected proposals, or source spans after review by default. Retain only minimum provider/model/schema provenance, the model digest, prompt-template identifier/version/hash, field names, reviewer disposition, and the resulting clinical revision reference.
+- Process speech locally through bounded RAM or anonymous pipes when possible. If a provider requires a temporary file, write only ciphertext using a fresh per-session key held outside the file, a random non-identifying name, restrictive ACLs, bounded size/duration, and no path in logs or process arguments. Sanitize the key, delete the ciphertext, and perform validated orphan cleanup after success, failure, cancellation, timeout, lock/logout, or crash recovery. Do not claim that ordinary overwrite sanitizes SSD media.
 - Prefer a controlled whisper.cpp child process or reviewed binding. If a server is used, bind to loopback, authenticate where supported, sandbox it, and prohibit broad CORS/network access.
 - Model binaries and weights are software supply-chain inputs: verify source, license, checksum/signature, version, and supported hardware before installation.
 
@@ -205,6 +208,7 @@ Crash reporting is local-only by default. Support bundles require preview/redact
 - Recover exact workflow state after process or power loss, especially after administration confirmation.
 - Perform pre-migration encrypted backup, free-space check, checksum, migration, integrity check, and safe cutover.
 - Make model outages non-blocking for deterministic documentation.
+- Verify that external-provider abort/quarantine and app-owned process-tree termination return control within the approved time-to-fallback target.
 - Make registry outages explicit and retryable; never lose a finalized record because transmission failed.
 - Document downtime workflow, backup frequency, recovery time/recovery point objectives, responsible roles, and paper reconciliation before pilot.
 - Provide a tested process for lost/stolen devices, account compromise, suspected data corruption, and unavailable keychain.
@@ -237,6 +241,8 @@ Before real PHI:
 11. External security review and penetration test findings are resolved or formally accepted.
 12. Incident response, breach assessment, downtime, retention, media disposal, and workforce procedures are approved.
 13. Production startup proves encrypted database, Windows SecretStore, non-development authentication, production logging, approved schema, required security configuration, and an explicit compile-time `real-phi` entitlement; no runtime checkbox can bypass them. The entitlement is not enabled in Phase 1.
+14. Provider tests verify the approved model digest, prompt-template hash provenance, dual-mode cancellation, resource-exhaustion routing, and no automatic restart after failed hard termination.
+15. Temporary-assist tests prove RAM/pipe-first handling, ciphertext-only fallback files, key sanitization, restrictive ACLs, orphan cleanup, and no synthetic PHI in pagefile/crash/support evidence collected under the approved Windows policy.
 
 Before PREIS transmission:
 

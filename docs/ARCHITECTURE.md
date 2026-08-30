@@ -138,11 +138,17 @@ Microphone / typed note
 
 The provider contracts return proposals, not domain entities. Provider output is untrusted input. It must pass schema, length, code-set, and provenance checks. AI cannot call application commands and cannot set workflow state.
 
+The Rust application layer owns an explicit, bounded assist-session graph separate from the clinical encounter state machine. It enforces loop budgets, an absolute wall-clock deadline, typed terminal outcomes, cleanup, and manual fallback. A separately provisioned provider receives cooperative request abort plus quarantine; AutoVaxx does not terminate a facility-managed service. Any future app-owned child runtime uses a Windows Job Object and hard process-tree termination after cooperative cancellation exceeds the deadline. Provider `OUT_OF_MEMORY` or isolated provider-runtime `DISK_FULL` bypasses retry/repair; unknown/shared-volume exhaustion or clinical `PERSISTENCE_FULL` remains a blocking integrity failure. See [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md).
+
 Ollama initially runs on a loopback endpoint; its documented local API defaults to `http://localhost:11434/api`. The adapter must enforce loopback resolution for PHI-bearing requests rather than trusting a configurable URL. See [Ollama API documentation](https://docs.ollama.com/api/introduction).
+
+The adapter compares Ollama's reported model digest with the approved synthetic-evaluation manifest at readiness and before the first patient-bearing assist session. A mismatch is policy denied. The applied-proposal provenance records the approved model digest and prompt-template cryptographic hash without retaining the rendered prompt.
 
 The future llama.cpp adapter can use its loopback server interface without changing the domain contract. See [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md).
 
 Speech starts behind a whisper.cpp adapter. The upstream example server accepts local inference requests but warns that file uploads and format conversion require sandboxing and validation. AutoVaxx should prefer a tightly controlled child process or in-process binding over a broadly reachable server. See [whisper.cpp server documentation](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md).
+
+Audio and transcript transfer is bounded RAM/anonymous-pipe first. If a provider requires a temporary file, only ciphertext may reach disk; it uses a fresh per-session key held outside the file, restrictive ACLs, a random nonidentifying name, cryptographic key sanitization, immediate deletion, and validated orphan cleanup. AutoVaxx does not claim that ordinary file overwriting sanitizes SSD media.
 
 ## 6. Deterministic rule architecture
 
@@ -208,6 +214,8 @@ No registry payload is built by an LLM. Mapping is deterministic and fixture-tes
 ## 9. Offline and process model
 
 The Tauri application and SQLite database are sufficient for the core deterministic workflow. Ollama and whisper.cpp are optional local dependencies whose absence degrades assistance, not documentation or safety.
+
+Assistance failure must release control predictably. Synthetic evaluation measures median and 95th-percentile time-to-fallback, accepted-as-is rate, accepted-with-correction rate, and correction actions per accepted proposal; these metrics use synthetic/usability evidence by default rather than patient-bearing telemetry.
 
 The MVP should not add a local message broker or service mesh. A durable database table may track explicitly requested export/transmission jobs if needed. Network state is surfaced clearly. Failures remain pending/failed with retry information and never become accepted merely because connectivity is absent.
 
