@@ -466,14 +466,18 @@ mod tests {
         store: &'a FakeSecretStore,
     ) -> (Database, DatabaseKeyLifecycle<'a>) {
         let path = temp.path().join("source.sqlite");
+        eprintln!("backup-test: before key lifecycle setup");
         let lifecycle = DatabaseKeyLifecycle::new(store);
+        eprintln!("backup-test: before encrypted database creation");
         let database = lifecycle.create_encrypted_database(&path).unwrap();
+        eprintln!("backup-test: after encrypted database creation");
         database
             .execute_test_sql(
                 "CREATE TABLE synthetic_markers (id INTEGER PRIMARY KEY, marker TEXT NOT NULL);
                  INSERT INTO synthetic_markers (marker) VALUES ('SYNTHETIC-PHI-EQUIVALENT-SENTINEL');",
             )
             .unwrap();
+        eprintln!("backup-test: after synthetic marker write");
         (database, lifecycle)
     }
 
