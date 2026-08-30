@@ -90,7 +90,12 @@ jobs:
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --all-targets -- -D warnings
-      - run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store
+      - name: Run encrypted Windows tests with an explicit test-thread stack
+        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store
+        env:
+          # Argon2's debug path exceeds the Windows test harness's default
+          # thread stack. This affects test threads only, not application code.
+          RUST_MIN_STACK: "8388608"
       - run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features production
       - run: pnpm tauri build --bundles nsis
 
