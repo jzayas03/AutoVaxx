@@ -1372,12 +1372,16 @@ mod tests {
         let database = Database::create_encrypted(&path, &key).unwrap();
         {
             let connection = database.connection.lock().unwrap();
+            let log_level: String = connection
+                .query_row("PRAGMA cipher_log_level", [], |row| row.get(0))
+                .unwrap();
             let foreign_keys: i64 = connection
                 .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
                 .unwrap();
             let journal_mode: String = connection
                 .query_row("PRAGMA journal_mode", [], |row| row.get(0))
                 .unwrap();
+            assert_eq!(log_level, "ERROR");
             assert_eq!(foreign_keys, 1);
             assert_eq!(journal_mode.to_ascii_lowercase(), "wal");
         }
