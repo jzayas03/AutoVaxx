@@ -5,6 +5,10 @@ on:
   push:
     branches-ignore: [main]
 
+concurrency:
+  group: phase-1-quality-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: read
@@ -12,6 +16,7 @@ permissions:
 jobs:
   frontend-and-policy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -33,6 +38,7 @@ jobs:
 
   secret-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,6 +50,7 @@ jobs:
 
   rust-macos:
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -57,6 +64,7 @@ jobs:
 
   windows-foundation:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -85,3 +93,25 @@ jobs:
       - run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store
       - run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features production
       - run: pnpm tauri build --bundles nsis
+
+  required:
+    name: Required quality gates
+    if: ${{ always() }}
+    needs:
+      - frontend-and-policy
+      - secret-scan
+      - rust-macos
+      - windows-foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless every quality gate passed
+        if: >-
+          ${{
+            needs.frontend-and-policy.result != 'success' ||
+            needs.secret-scan.result != 'success' ||
+            needs.rust-macos.result != 'success' ||
+            needs.windows-foundation.result != 'success'
+          }}
+        run: exit 1
+      - run: echo "All required quality gates passed"
