@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AutoVaxx">
+  <rect width="512" height="512" rx="96" fill="#123e3a"/>
+  <path d="M256 106c83 0 150 67 150 150s-67 150-150 150-150-67-150-150 67-150 150-150Z" fill="#e7f3ee"/>
+  <path d="M236 172h40v64h64v40h-64v64h-40v-64h-64v-40h64v-64Z" fill="#17654f"/>
+</svg>
