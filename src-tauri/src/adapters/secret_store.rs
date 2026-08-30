@@ -156,7 +156,7 @@ impl SecretStore for WindowsSecretStore {
                 Err(keyring_core::Error::NoEntry) => {}
                 Err(error) => return Err(map_keyring_read_error(error)),
             }
-            return entry.set_secret(secret).map_err(map_keyring_protect_error);
+            entry.set_secret(secret).map_err(map_keyring_protect_error)
         }
         #[cfg(not(windows))]
         {
@@ -168,10 +168,9 @@ impl SecretStore for WindowsSecretStore {
     fn load(&self, key_reference: &str) -> Result<Vec<u8>, AppError> {
         #[cfg(windows)]
         {
-            return self
-                .entry(key_reference)?
+            self.entry(key_reference)?
                 .get_secret()
-                .map_err(map_keyring_read_error);
+                .map_err(map_keyring_read_error)
         }
         #[cfg(not(windows))]
         {
@@ -183,10 +182,9 @@ impl SecretStore for WindowsSecretStore {
     fn delete(&self, key_reference: &str) -> Result<(), AppError> {
         #[cfg(windows)]
         {
-            return self
-                .entry(key_reference)?
+            self.entry(key_reference)?
                 .delete_credential()
-                .map_err(map_keyring_protect_error);
+                .map_err(map_keyring_protect_error)
         }
         #[cfg(not(windows))]
         {
