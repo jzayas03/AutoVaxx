@@ -303,6 +303,8 @@ impl Database {
     }
 
     fn migrate(connection: &Connection) -> Result<(), AppError> {
+        #[cfg(test)]
+        eprintln!("migration-test: before migration table");
         connection.execute_batch(
             "CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
@@ -310,7 +312,11 @@ impl Database {
                 applied_at_utc TEXT NOT NULL
             );",
         )?;
+        #[cfg(test)]
+        eprintln!("migration-test: after migration table");
         let checksum = format!("sha256:{}", sha256_text(MIGRATION_001));
+        #[cfg(test)]
+        eprintln!("migration-test: after checksum");
         let existing_checksum = connection
             .query_row(
                 "SELECT checksum FROM schema_migrations WHERE version = ?1",
@@ -318,37 +324,53 @@ impl Database {
                 |row| row.get::<_, String>(0),
             )
             .optional()?;
+        #[cfg(test)]
+        eprintln!("migration-test: after migration lookup");
         if let Some(existing_checksum) = existing_checksum {
             if existing_checksum != checksum {
                 return Err(AppError::Configuration);
             }
         } else {
+            #[cfg(test)]
+            eprintln!("migration-test: before schema batch");
             connection.execute_batch(MIGRATION_001)?;
+            #[cfg(test)]
+            eprintln!("migration-test: after schema batch");
             connection.execute(
                 "INSERT INTO schema_migrations (version, checksum, applied_at_utc) VALUES (?1, ?2, ?3)",
                 params![SCHEMA_VERSION, checksum, Utc::now().to_rfc3339()],
             )?;
+            #[cfg(test)]
+            eprintln!("migration-test: after migration record");
         }
         connection.execute(
             "INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('data_classification', 'SYNTHETIC_ONLY')",
             [],
         )?;
+        #[cfg(test)]
+        eprintln!("migration-test: after classification seed");
         connection.execute(
             "INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('schema_version', ?1)",
             params![SCHEMA_VERSION.to_string()],
         )?;
+        #[cfg(test)]
+        eprintln!("migration-test: after schema version seed");
         for role in Role::ALL {
             connection.execute(
                 "INSERT OR IGNORE INTO roles (role_code, display_name) VALUES (?1, ?2)",
                 params![role.code(), role.code().replace('_', " ")],
             )?;
         }
+        #[cfg(test)]
+        eprintln!("migration-test: after roles seed");
         for permission in Permission::ALL {
             connection.execute(
                 "INSERT OR IGNORE INTO permissions (permission_code) VALUES (?1)",
                 params![permission.code()],
             )?;
         }
+        #[cfg(test)]
+        eprintln!("migration-test: after permissions seed");
         for role in Role::ALL {
             for permission in permissions_for_role(role) {
                 connection.execute(
@@ -357,6 +379,8 @@ impl Database {
                 )?;
             }
         }
+        #[cfg(test)]
+        eprintln!("migration-test: after role permissions seed");
         Ok(())
     }
 
