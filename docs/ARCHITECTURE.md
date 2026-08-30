@@ -1,6 +1,6 @@
 # AutoVaxx Architecture
 
-**Status:** Approved Phase 1 foundation architecture; Phase 1 exit review pending
+**Status:** Phase 1 integrated foundation implemented; Phase 1 exit remains not passed
 
 **Date:** 2026-08-30
 
@@ -171,14 +171,15 @@ An LLM may convert free text into candidate structured answers. It may not choos
 
 SQLite is the single source of truth for the MVP. All writes occur through Rust repositories in explicit transactions. Foreign keys are enabled. Migrations are forward-only, checksummed, and tested against encrypted backup/restore copies.
 
-Production PHI storage must use an encrypted SQLite-compatible database before real patient use. SQLCipher is the leading option because it preserves much of SQLite's operational model while adding page-level encryption. Final library, distribution, platform, support, and licensing choices require a security/packaging spike. See [SQLCipher design](https://www.zetetic.net/sqlcipher/design/) and [license information](https://www.zetetic.net/sqlcipher/license/).
+The integrated candidate uses SQLCipher because it preserves SQLite's operational model while adding page-level encryption. It is feature-gated and verified with synthetic data on the current macOS host; the Windows distribution/support decision and Windows 11 runtime evidence remain open. See [SQLCipher design](https://www.zetetic.net/sqlcipher/design/), [license information](https://www.zetetic.net/sqlcipher/license/), and [SQLCIPHER_SPIKE.md](SQLCIPHER_SPIKE.md).
 
 Key architecture:
 
 - Generate a random database key during protected initialization.
-- For the Windows 11 x64 production target, protect the per-database random key through a Windows `SecretStore` adapter using an approved DPAPI/CNG/credential-store scope and restrictive access controls; never store it beside the database.
+- For Windows, `WindowsSecretStore` uses the current user's Windows Credential Manager through a narrow Rust adapter. The only adjacent file is a non-secret opaque database/key reference. Actual Windows 11 account, ACL, reset, and recovery behavior remains a release gate.
 - Never expose the key to React, logs, command output, or backup manifests.
-- Encrypt each backup container with an independent random key and an approved portable recovery wrapping mechanism; a workstation-bound database key alone is not a recovery design.
+- Create a separately keyed transactionally consistent SQLCipher snapshot, then encrypt/authenticate the platform-neutral backup payload with a fresh random content key. The database DEK is never the backup key.
+- Authenticate the non-PHI header as AEAD associated data and keep the snapshot key only inside the encrypted payload. Portable recovery uses a separate recovery envelope, never Windows Credential Manager alone.
 - Define tested recovery and key-loss behavior before real PHI use.
 - Permit plaintext only in synthetic development/test builds with a persistent visual and runtime guard.
 
@@ -252,6 +253,8 @@ Every decision below is proposed until implementation approval.
 | ADR-008 | **Append-only finalized revisions plus atomic audit events.** Prevents silent history loss and supports corrections/accountability. | In-place updates with timestamps; event sourcing for everything; database triggers alone. | Storage growth; more complex queries; privileged local tampering remains a threat. | Revisions can synchronize as immutable events; add externally anchored integrity checkpoints if threat model requires. |
 | ADR-009 | **Explicit outflow authorization and adapter-based integration.** Makes every PHI disclosure visible and keeps PREIS assumptions isolated. | Automatic background sync; manual re-entry; embed PREIS fields throughout domain. | Users may defer submissions; payload files can leak; retries can duplicate. | Add policy-approved scheduled transmission only after explicit configuration, idempotency, and current PREIS certification. |
 | ADR-010 | **Single-facility configuration now, facility/workstation IDs everywhere relevant.** Avoids multi-tenant complexity without painting data into a corner. | Full multi-tenant schema; omit facility identity entirely. | Some future conflicts cannot be solved by IDs alone; small extra fields in MVP. | Introduce facility service, device enrollment, and synchronization without rewriting canonical records. |
+| ADR-011 | **Windows Credential Manager behind `SecretStore` for the database DEK.** Avoids custom unsafe Windows FFI and protected-blob ACL code while preserving an OS-native current-user store. | Direct DPAPI/CNG wrapper and protected blob; raw key file; password-derived DB key. | Credential overwrite/race semantics, account reset/recovery, platform crate behavior, and Windows validation. | Replace only the adapter with direct DPAPI/CNG, enterprise key custody, or a future `MacOsSecretStore`; domain/application code remains unchanged. |
+| ADR-012 | **SQLCipher snapshot inside a separate authenticated portable envelope.** Eliminates plaintext SQLite staging and separates local database custody from disaster recovery. | Raw file copy; plaintext export then encrypt; DPAPI-only backup; proprietary cryptography. | Memory buffering up to the current cap, unresolved recovery custody, native SQLCipher variance, filesystem/audit coordination. | Add a new streaming format version and recovery-envelope providers while retaining explicit decoder/version policy. |
 
 ## 12. Tauri security posture
 

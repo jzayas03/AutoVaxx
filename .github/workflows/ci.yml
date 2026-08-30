@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   frontend-and-policy:
@@ -37,6 +38,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
   rust-macos:
     runs-on: macos-latest
@@ -64,9 +68,20 @@ jobs:
           cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
+          components: rustfmt, clippy
           targets: x86_64-pc-windows-msvc
       - run: pnpm install --frozen-lockfile
+      - name: Record runner evidence (not Windows 11 acceptance)
+        shell: pwsh
+        run: |
+          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsBuildNumber, OsArchitecture
+          Get-CimInstance Win32_Processor | Select-Object Name
+          Get-CimInstance Win32_ComputerSystem | Select-Object TotalPhysicalMemory
+          rustc --version --verbose
+          node --version
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo test --manifest-path src-tauri/Cargo.toml
-      - run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher sqlcipher_spike
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store
       - run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features production
       - run: pnpm tauri build --bundles nsis

@@ -1,5 +1,6 @@
 mod backup;
 mod clock;
+mod database_key;
 mod logging;
 mod providers;
 mod secret_store;
@@ -7,6 +8,7 @@ mod sqlite;
 
 pub use backup::*;
 pub use clock::*;
+pub use database_key::*;
 pub use logging::*;
 pub use providers::*;
 pub use secret_store::*;

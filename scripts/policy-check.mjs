@@ -81,6 +81,12 @@ for (const requiredGuard of [
   'all(feature = "production", feature = "synthetic-only")',
   'all(feature = "production", feature = "dev-auth")',
   'all(feature = "production", not(feature = "sqlcipher"))',
+  'all(feature = "production", not(feature = "windows-secret-store"))',
+  'all(feature = "production", not(feature = "production-logging"))',
+  'all(feature = "production", not(target_os = "windows"))',
+  'all(feature = "real-phi", not(feature = "production"))',
+  'all(feature = "real-phi", not(feature = "approved-schema"))',
+  'all(feature = "real-phi", not(feature = "hardened-security-config"))',
 ]) {
   if (!rustRoot.includes(requiredGuard))
     failures.push(

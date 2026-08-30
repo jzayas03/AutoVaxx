@@ -92,9 +92,10 @@ The webview, imported data, pasted text, local model output, registry responses,
 ### Database at rest
 
 - Real PHI is blocked until the selected encrypted SQLite build passes packaging, migration, backup, corruption, and performance tests on representative Windows 11 x64 hardware.
-- SQLCipher is the leading candidate, not yet a final dependency decision.
+- SQLCipher is the integrated Phase 1 candidate. Current-host behavior passes; Windows packaging/runtime and Community-versus-supported distribution remain undecided.
 - Use strong random keys; never derive the database key directly from a user's login password.
-- Generate one random key per database and retrieve its wrapped form through a Rust `SecretStore`. On Windows 11 x64, the adapter must use an approved DPAPI/CNG/credential-store scope plus restrictive access controls; a Phase 1 prototype determines the exact mechanism.
+- Generate one random key per database and retrieve it through a Rust `SecretStore`. `WindowsSecretStore` uses Windows Credential Manager under an application service name and opaque database reference; it refuses replacement and fails closed on missing, denied, malformed, unavailable, protection, or recovery errors.
+- Persist only a versioned opaque key descriptor beside the database. Missing or unrecoverable protected material never triggers silent key generation.
 - Keep the key separate from the database and do not place it in source, environment examples, process arguments, frontend state, logs, crash data, or backup manifests.
 - Zeroize key material where practical and minimize its lifetime/copies in memory.
 
@@ -105,8 +106,10 @@ HHS breach guidance says valid at-rest encryption should be consistent with NIST
 - Backups are encrypted independently with authenticated encryption and a versioned format.
 - A backup includes schema/app versions, integrity metadata, and content/rule package identifiers, but its unencrypted manifest contains no PHI.
 - Each backup uses an independent random key. Its portable recovery wrapping secret is held separately from the workstation and backup; a machine-bound database key alone is not sufficient for disaster recovery.
+- Backup creation first writes an independently keyed SQLCipher online snapshot, never a plaintext SQLite snapshot. A fresh AES-256-GCM content key authenticates the payload and non-PHI header; the snapshot key is inside that encrypted payload.
 - Support authorized manual backups and configurable scheduled encrypted local backups. A selected removable volume is allowed; cloud and implicit network destinations are not.
 - Restore requires authorization, writes an audit event, checks integrity/schema/audit chain, and never overwrites the active database until verification succeeds.
+- Restore staging remains SQLCipher-encrypted. Validation covers container structure/authentication, SQLite and cipher integrity, schema/migration checksum, foreign keys, audit-chain hashes, audit JSON, and revision minima before explicit cutover.
 - Test restore regularly on a separate synthetic installation. An untested backup is not a control.
 - Define secure disposal for expired backups and media under facility policy.
 
@@ -233,6 +236,7 @@ Before real PHI:
 10. Backup restore and disaster recovery drill succeeds with synthetic data.
 11. External security review and penetration test findings are resolved or formally accepted.
 12. Incident response, breach assessment, downtime, retention, media disposal, and workforce procedures are approved.
+13. Production startup proves encrypted database, Windows SecretStore, non-development authentication, production logging, approved schema, required security configuration, and an explicit compile-time `real-phi` entitlement; no runtime checkbox can bypass them. The entitlement is not enabled in Phase 1.
 
 Before PREIS transmission:
 

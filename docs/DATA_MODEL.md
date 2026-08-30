@@ -361,13 +361,15 @@ The MVP must not implement patient-record hard deletion until a reviewed retenti
 | DM-006 | **Registry artifacts and acknowledgements are immutable encrypted records.** Supports reproducibility and proof of outcome. | Regenerate on demand; keep only status flags. | Storage growth and retention complexity. | Policy-driven archival/purge; artifact hashes survive migration. |
 | DM-007 | **Content/rules are versioned data with provenance.** Offline decisions remain reproducible after guidance changes. | Always fetch latest online; hard-code everything. | Stale packages and distribution/signing burden. | Signed update service or facility distribution channel without changing clinical revisions. |
 | DM-008 | **Globally unique IDs and optimistic revisions from day one.** Low MVP cost preserves a multi-workstation option. | SQLite integer IDs and last-write-wins. | IDs alone do not solve distributed conflicts. | Add server reconciliation and device event ordering later. |
+| DM-009 | **Keep database-key identity outside the encrypted schema as an opaque descriptor only.** SQLCipher needs key discovery before schema access without persisting the raw DEK. | Raw adjacent key; environment/config key; deterministic key derivation. | Descriptor loss makes the DB locally undiscoverable; copying it does not copy the protected credential. | Move descriptors into a signed installation manifest or device-enrollment service without changing clinical rows. |
+| DM-010 | **Backups contain a complete encrypted database snapshot plus encrypted restore metadata.** This preserves migrations, audit and revisions as one consistent unit. | Logical table export; raw live file copy. | Format/schema compatibility and memory limits. | Add versioned streaming/logical migration while retaining immutable source backups. |
 
 ## 17. Migration and integrity rules
 
 - Every schema migration has an immutable identifier, checksum, forward action, and tested rollback/recovery plan even if production rollback uses backup restore rather than a down migration.
 - Start migration only after an encrypted backup and free-space check.
 - Never infer or synthesize clinical facts to satisfy a new non-null column; use explicit unknown/not-applicable semantics and a reviewed backfill.
-- Record software and schema versions in backup manifests without PHI.
+- Record software and schema versions in the authenticated non-PHI backup header; keep snapshot hashes, content references, audit data and the snapshot key in the authenticated encrypted payload.
 - Run SQLite integrity and foreign-key checks after migration and restore.
 - Verify the audit chain and current-revision pointers after migration.
 - Use production-like encrypted databases and non-superuser access patterns in tests; mocks alone do not validate constraints.
