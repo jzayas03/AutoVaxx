@@ -167,6 +167,16 @@ impl Database {
             .pragma_update(None, "key", pragma_value.as_str())
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
         hex_key.zeroize();
+        // SQLCipher 4.14 can recursively allocate while logging a failed
+        // VirtualLock on Windows (fixed upstream by afbb132d in 4.18). Filter
+        // those warnings before enhanced memory security is enabled; ERROR
+        // messages remain available.
+        let log_level: String = connection
+            .query_row("PRAGMA cipher_log_level = ERROR", [], |row| row.get(0))
+            .map_err(|_| AppError::Configuration)?;
+        if log_level != "ERROR" {
+            return Err(AppError::Configuration);
+        }
         connection
             .pragma_update(None, "cipher_memory_security", "ON")
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
