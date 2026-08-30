@@ -114,23 +114,11 @@ impl Database {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: before connection open");
         let connection = Connection::open(&path)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after connection open");
         Self::apply_sqlcipher_key(&connection, key)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after key application");
         Self::configure(&connection, true)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after connection configuration");
         Self::migrate(&connection)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after migration");
         Self::assert_classification(&connection, "SYNTHETIC_ONLY")?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after classification check");
         Ok(Self {
             connection: Mutex::new(connection),
             path,
@@ -175,24 +163,26 @@ impl Database {
                 .collect::<String>(),
         );
         let pragma_value = Zeroizing::new(format!("x'{}'", hex_key.as_str()));
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: before key pragma");
         connection
             .pragma_update(None, "key", pragma_value.as_str())
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after key pragma");
         hex_key.zeroize();
+        // SQLCipher 4.14 can recursively allocate while logging a failed
+        // VirtualLock on Windows (fixed upstream by afbb132d in 4.18). Filter
+        // those warnings before enhanced memory security is enabled; ERROR
+        // messages remain available.
+        let log_level: String = connection
+            .query_row("PRAGMA cipher_log_level = ERROR", [], |row| row.get(0))
+            .map_err(|_| AppError::Configuration)?;
+        if log_level != "ERROR" {
+            return Err(AppError::Configuration);
+        }
         connection
             .pragma_update(None, "cipher_memory_security", "ON")
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after cipher memory security pragma");
         let cipher_version: String = connection
             .query_row("PRAGMA cipher_version", [], |row| row.get(0))
             .map_err(|_| AppError::DatabaseKeyInvalid)?;
-        #[cfg(test)]
-        eprintln!("sqlcipher-test: after cipher version query");
         if cipher_version.is_empty() {
             return Err(AppError::Configuration);
         }
@@ -303,8 +293,6 @@ impl Database {
     }
 
     fn migrate(connection: &Connection) -> Result<(), AppError> {
-        #[cfg(test)]
-        eprintln!("migration-test: before migration table");
         connection.execute_batch(
             "CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
@@ -312,11 +300,7 @@ impl Database {
                 applied_at_utc TEXT NOT NULL
             );",
         )?;
-        #[cfg(test)]
-        eprintln!("migration-test: after migration table");
         let checksum = format!("sha256:{}", sha256_text(MIGRATION_001));
-        #[cfg(test)]
-        eprintln!("migration-test: after checksum");
         let existing_checksum = connection
             .query_row(
                 "SELECT checksum FROM schema_migrations WHERE version = ?1",
@@ -324,53 +308,37 @@ impl Database {
                 |row| row.get::<_, String>(0),
             )
             .optional()?;
-        #[cfg(test)]
-        eprintln!("migration-test: after migration lookup");
         if let Some(existing_checksum) = existing_checksum {
             if existing_checksum != checksum {
                 return Err(AppError::Configuration);
             }
         } else {
-            #[cfg(test)]
-            eprintln!("migration-test: before schema batch");
             connection.execute_batch(MIGRATION_001)?;
-            #[cfg(test)]
-            eprintln!("migration-test: after schema batch");
             connection.execute(
                 "INSERT INTO schema_migrations (version, checksum, applied_at_utc) VALUES (?1, ?2, ?3)",
                 params![SCHEMA_VERSION, checksum, Utc::now().to_rfc3339()],
             )?;
-            #[cfg(test)]
-            eprintln!("migration-test: after migration record");
         }
         connection.execute(
             "INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('data_classification', 'SYNTHETIC_ONLY')",
             [],
         )?;
-        #[cfg(test)]
-        eprintln!("migration-test: after classification seed");
         connection.execute(
             "INSERT OR IGNORE INTO app_metadata (key, value) VALUES ('schema_version', ?1)",
             params![SCHEMA_VERSION.to_string()],
         )?;
-        #[cfg(test)]
-        eprintln!("migration-test: after schema version seed");
         for role in Role::ALL {
             connection.execute(
                 "INSERT OR IGNORE INTO roles (role_code, display_name) VALUES (?1, ?2)",
                 params![role.code(), role.code().replace('_', " ")],
             )?;
         }
-        #[cfg(test)]
-        eprintln!("migration-test: after roles seed");
         for permission in Permission::ALL {
             connection.execute(
                 "INSERT OR IGNORE INTO permissions (permission_code) VALUES (?1)",
                 params![permission.code()],
             )?;
         }
-        #[cfg(test)]
-        eprintln!("migration-test: after permissions seed");
         for role in Role::ALL {
             for permission in permissions_for_role(role) {
                 connection.execute(
@@ -379,8 +347,6 @@ impl Database {
                 )?;
             }
         }
-        #[cfg(test)]
-        eprintln!("migration-test: after role permissions seed");
         Ok(())
     }
 

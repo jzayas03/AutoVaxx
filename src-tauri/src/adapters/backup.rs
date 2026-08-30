@@ -466,18 +466,14 @@ mod tests {
         store: &'a FakeSecretStore,
     ) -> (Database, DatabaseKeyLifecycle<'a>) {
         let path = temp.path().join("source.sqlite");
-        eprintln!("backup-test: before key lifecycle setup");
         let lifecycle = DatabaseKeyLifecycle::new(store);
-        eprintln!("backup-test: before encrypted database creation");
         let database = lifecycle.create_encrypted_database(&path).unwrap();
-        eprintln!("backup-test: after encrypted database creation");
         database
             .execute_test_sql(
                 "CREATE TABLE synthetic_markers (id INTEGER PRIMARY KEY, marker TEXT NOT NULL);
                  INSERT INTO synthetic_markers (marker) VALUES ('SYNTHETIC-PHI-EQUIVALENT-SENTINEL');",
             )
             .unwrap();
-        eprintln!("backup-test: after synthetic marker write");
         (database, lifecycle)
     }
 
@@ -689,27 +685,22 @@ mod tests {
 
     #[test]
     fn abandoned_restore_stage_is_removed_without_touching_active_database() {
-        eprintln!("backup-test: before fixture setup");
         let temp = tempfile::tempdir().unwrap();
         let store = FakeSecretStore::new();
         let (database, lifecycle) = encrypted_source(&temp, &store);
-        eprintln!("backup-test: after fixture setup");
         let backup = temp.path().join("manual.avxbak");
         let service = EncryptedBackupService;
         service
             .create_encrypted_backup(&database, &backup, RECOVERY_SECRET)
             .unwrap();
-        eprintln!("backup-test: after backup creation");
         let staged = service
             .stage_restore(&backup, temp.path(), RECOVERY_SECRET)
             .unwrap();
-        eprintln!("backup-test: after restore staging");
         let staged_path = staged.staged_database_path.clone();
         assert!(staged_path.exists());
         drop(staged);
         assert!(!staged_path.exists());
         assert!(lifecycle.open_encrypted_database(database.path()).is_ok());
-        eprintln!("backup-test: after active database reopen");
     }
 
     fn contains_marker(bytes: &[u8], marker: &[u8]) -> bool {

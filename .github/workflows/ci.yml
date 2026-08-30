@@ -90,8 +90,7 @@ jobs:
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --all-targets -- -D warnings
-      - name: Run encrypted Windows tests serially
-        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store -- --test-threads=1 --nocapture
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store
       - run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features production
       - run: pnpm tauri build --bundles nsis
 

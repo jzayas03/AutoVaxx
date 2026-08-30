@@ -16,7 +16,7 @@
 | Dependency | Purpose | Risk/decision | Migration path |
 |---|---|---|---|
 | `keyring-core` 1.0.0 / `windows-native-keyring-store` 1.1.0 | Windows Credential Manager adapter | Direct Windows-only provider avoids unrelated platform stores and explicitly selects `Local` persistence; account behavior still requires Windows 11 testing | Replace adapter with an approved direct DPAPI/CNG or enterprise custody implementation |
-| SQLCipher/OpenSSL through `rusqlite` | Encrypted SQLite pages | Native build, patch ownership, installer provenance and commercial-support choice remain release risks | Switch bundled/system/commercial SQLCipher behind repository adapter |
+| SQLCipher 4.14/OpenSSL through `rusqlite` | Encrypted SQLite pages | Native build, patch ownership, installer provenance and commercial-support choice remain release risks; SQLCipher [fixed a Windows `VirtualLock` logging recursion](https://github.com/sqlcipher/sqlcipher/commit/afbb132d60d421fd7b20d073e4448af3dcb5c61d) in 4.18 | Set SQLCipher logging to `ERROR` before enhanced memory security, fail closed if rejected, exercise the encrypted Windows suite, and upgrade to 4.18+ when the binding supplies it; switch bundled/system/commercial SQLCipher behind the repository adapter if needed |
 | `aes-gcm`, `argon2`, `zeroize` | Standard backup AEAD, recovery KDF, key-memory cleanup | One-shot envelope currently buffers large backups; secrets cannot be guaranteed absent from all OS memory artifacts | Versioned streaming envelope and/or approved recovery provider |
 
 ## Review cadence
