@@ -280,7 +280,7 @@ States distinguish at least `PREPARED`, `AUTHORIZED`, `SENT`, `TRANSPORT_FAILED`
 
 ### `assist_session`
 
-Stores provider type/version, local model identifier/version, start/end timestamps, purpose, source type, and retention disposition. It must not store prompts/responses by default.
+Stores provider type/version, approved local model identifier/version/digest, prompt-template identifier/version/hash, schema and decoding versions, start/end timestamps, purpose, source type, terminal outcome, attempt count, cleanup disposition, and retention disposition. It must not store rendered prompts/responses by default. A model-digest mismatch is recorded as a non-content policy denial and produces no proposal.
 
 ### `field_proposal`
 
@@ -288,7 +288,9 @@ During human review, holds the assist session, target draft/entity field, propos
 
 ### `speech_artifact`
 
-Stores transient-file identifier, model/version, duration, language, creation/deletion times, and cleanup disposition without patient content. The MVP does not retain raw audio or an encrypted content reference. Patient names or transcript content never appear in filenames. Any later recording-retention feature requires a separate policy and data-model decision.
+Stores transient-artifact identifier, model/version, duration, language, encrypted-file-used flag, creation/deletion times, key-sanitization outcome, and cleanup disposition without patient content. RAM/anonymous-pipe transfer is preferred. If an encrypted temporary file is unavoidable, its random identifier is transient, its per-session key is never stored with it, and startup cleanup deletes only validated AutoVaxx-owned orphaned ciphertext. The MVP does not retain raw audio or an encrypted content reference. Patient names or transcript content never appear in filenames. Any later recording-retention feature requires a separate policy and data-model decision.
+
+When an accepted proposal changes a draft, the audit event references the `assist_session` and includes its prompt-template cryptographic hash in minimum non-PHI metadata. It does not copy the prompt, transcript, model response, proposed/rejected values, or source spans.
 
 ## 12. Audit model
 
