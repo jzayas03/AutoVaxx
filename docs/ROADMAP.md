@@ -52,7 +52,7 @@ The MVP is a local desktop modular monolith. It does not include cloud services,
 
 ## 4. Phase 1: technical foundations
 
-**Current exit status:** Not passed. The synthetic foundation is implemented, but representative Windows 11 x64 validation, Windows secret protection, and an integrated SQLCipher backup/restore path remain open. See [Phase 1 Exit Review](PHASE_1_EXIT_REVIEW.md).
+**Current exit status:** Not passed. Windows secret protection and the integrated SQLCipher/key/backup/restore path are implemented and verified with synthetic data on macOS, but representative Windows 11 x64 execution, clean-workstation recovery, failure-mode testing, native distribution decisions, and production approvals remain open. See [Phase 1 Exit Review](PHASE_1_EXIT_REVIEW.md).
 
 ### Build
 

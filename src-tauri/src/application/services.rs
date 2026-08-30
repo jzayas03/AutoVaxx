@@ -9,7 +9,7 @@ use crate::domain::{
     EncounterId, EncounterState, ImmunizationEncounter, Patient, Permission, SessionContext,
 };
 use crate::error::AppError;
-use crate::ports::{BackupReceipt, BackupService, StagedRestore};
+use crate::ports::{BackupReceipt, BackupService, SecretStore, StagedRestore};
 
 pub struct AuthorizationService;
 
@@ -86,36 +86,55 @@ pub struct EncounterService<'a> {
 pub struct BackupApplicationService<'a> {
     database: &'a Database,
     backup: &'a dyn BackupService,
+    secret_store: &'a dyn SecretStore,
 }
 
 impl<'a> BackupApplicationService<'a> {
-    pub fn new(database: &'a Database, backup: &'a dyn BackupService) -> Self {
-        Self { database, backup }
+    pub fn new(
+        database: &'a Database,
+        backup: &'a dyn BackupService,
+        secret_store: &'a dyn SecretStore,
+    ) -> Self {
+        Self {
+            database,
+            backup,
+            secret_store,
+        }
     }
 
     pub fn create_manual_backup(
         &self,
         actor: &SessionContext,
-        database_path: &Path,
         destination: &Path,
-        recovery_passphrase: &[u8],
-        now: DateTime<Utc>,
+        recovery_secret: &[u8],
+        _now: DateTime<Utc>,
     ) -> Result<BackupReceipt, AppError> {
-        self.authorize(actor, now, "BACKUP_CREATE")?;
+        let operation_id = Uuid::new_v4();
+        if let Err(error) = AuthorizationService::require(actor, Permission::BackupManage) {
+            self.audit_error(actor, operation_id, "BACKUP_FAILED", "DENIED", &error)?;
+            return Err(error);
+        }
+        self.audit(actor, operation_id, "BACKUP_STARTED", "SUCCEEDED", "{}")?;
         match self
             .backup
-            .create_encrypted_backup(database_path, destination, recovery_passphrase)
+            .create_encrypted_backup(self.database, destination, recovery_secret)
         {
             Ok(receipt) => {
                 let metadata = format!(
-                    r#"{{"formatVersion":{},"encryptedSizeBytes":{}}}"#,
-                    receipt.format_version, receipt.encrypted_size_bytes
+                    r#"{{"backupId":"{}","formatVersion":{},"encryptedSizeBytes":{}}}"#,
+                    receipt.backup_id, receipt.format_version, receipt.encrypted_size_bytes
                 );
-                self.audit(actor, "BACKUP_CREATE", "SUCCEEDED", &metadata)?;
+                self.audit(
+                    actor,
+                    operation_id,
+                    "BACKUP_SUCCEEDED",
+                    "SUCCEEDED",
+                    &metadata,
+                )?;
                 Ok(receipt)
             }
             Err(error) => {
-                self.audit_error(actor, "BACKUP_CREATE", "FAILED", &error)?;
+                self.audit_error(actor, operation_id, "BACKUP_FAILED", "FAILED", &error)?;
                 Err(error)
             }
         }
@@ -126,20 +145,37 @@ impl<'a> BackupApplicationService<'a> {
         actor: &SessionContext,
         backup_path: &Path,
         staging_directory: &Path,
-        recovery_passphrase: &[u8],
+        recovery_secret: &[u8],
         now: DateTime<Utc>,
     ) -> Result<StagedRestore, AppError> {
-        self.authorize(actor, now, "BACKUP_RESTORE_STAGE")?;
+        let operation_id = Uuid::new_v4();
+        if let Err(error) = self.authorize_restore(actor, now) {
+            self.audit_error(actor, operation_id, "RESTORE_FAILED", "DENIED", &error)?;
+            return Err(error);
+        }
+        self.audit(actor, operation_id, "RESTORE_STARTED", "SUCCEEDED", "{}")?;
         match self
             .backup
-            .stage_restore(backup_path, staging_directory, recovery_passphrase)
+            .stage_restore(backup_path, staging_directory, recovery_secret)
         {
             Ok(staged) => {
-                self.audit(actor, "BACKUP_RESTORE_STAGE", "SUCCEEDED", "{}")?;
+                let metadata = format!(
+                    r#"{{"backupId":"{}","schemaVersion":{},"auditEventCount":{}}}"#,
+                    staged.backup_id,
+                    staged.summary.schema_version,
+                    staged.summary.audit_event_count
+                );
+                self.audit(
+                    actor,
+                    operation_id,
+                    "RESTORE_VALIDATED",
+                    "SUCCEEDED",
+                    &metadata,
+                )?;
                 Ok(staged)
             }
             Err(error) => {
-                self.audit_error(actor, "BACKUP_RESTORE_STAGE", "FAILED", &error)?;
+                self.audit_error(actor, operation_id, "RESTORE_FAILED", "FAILED", &error)?;
                 Err(error)
             }
         }
@@ -148,56 +184,61 @@ impl<'a> BackupApplicationService<'a> {
     pub fn cutover(
         &self,
         actor: &SessionContext,
-        staged: &StagedRestore,
+        staged: StagedRestore,
         destination: &Path,
         now: DateTime<Utc>,
     ) -> Result<(), AppError> {
-        self.authorize(actor, now, "BACKUP_RESTORE_CUTOVER")?;
-        match self.backup.cutover(staged, destination) {
-            Ok(()) => self.audit(actor, "BACKUP_RESTORE_CUTOVER", "SUCCEEDED", "{}"),
+        let operation_id = staged.backup_id;
+        if let Err(error) = self.authorize_restore(actor, now) {
+            self.audit_error(actor, operation_id, "RESTORE_FAILED", "DENIED", &error)?;
+            return Err(error);
+        }
+        match self.backup.cutover(staged, destination, self.secret_store) {
+            Ok(()) => self.audit(
+                actor,
+                operation_id,
+                "RESTORE_CUTOVER_CONFIRMED",
+                "SUCCEEDED",
+                "{}",
+            ),
             Err(error) => {
-                self.audit_error(actor, "BACKUP_RESTORE_CUTOVER", "FAILED", &error)?;
+                self.audit_error(actor, operation_id, "RESTORE_FAILED", "FAILED", &error)?;
                 Err(error)
             }
         }
     }
 
-    fn authorize(
+    fn authorize_restore(
         &self,
         actor: &SessionContext,
         now: DateTime<Utc>,
-        action: &str,
     ) -> Result<(), AppError> {
-        if let Err(error) = AuthorizationService::require(actor, Permission::BackupManage) {
-            self.audit_error(actor, action, "DENIED", &error)?;
-            return Err(error);
-        }
-        if let Err(error) = crate::application::auth::AuthService::require_recent_auth(actor, now) {
-            self.audit_error(actor, action, "DENIED", &error)?;
-            return Err(error);
-        }
+        AuthorizationService::require(actor, Permission::BackupManage)?;
+        crate::application::auth::AuthService::require_recent_auth(actor, now)?;
         Ok(())
     }
 
     fn audit_error(
         &self,
         actor: &SessionContext,
+        operation_id: Uuid,
         action: &str,
         outcome: &str,
         error: &AppError,
     ) -> Result<(), AppError> {
         let metadata = format!(r#"{{"errorCode":"{}"}}"#, safe_error_code(error));
-        self.audit(actor, action, outcome, &metadata)
+        self.audit(actor, operation_id, action, outcome, &metadata)
     }
 
     fn audit(
         &self,
         actor: &SessionContext,
+        operation_id: Uuid,
         action: &str,
         outcome: &str,
         metadata_json: &str,
     ) -> Result<(), AppError> {
-        let operation_id = Uuid::new_v4().to_string();
+        let operation_id = operation_id.to_string();
         self.database.append_audit_event(
             actor,
             &AuditDraft {
@@ -349,6 +390,13 @@ fn safe_error_code(error: &AppError) -> &'static str {
         AppError::InvalidTransition => "INVALID_TRANSITION",
         AppError::Validation => "VALIDATION_FAILED",
         AppError::SecretStoreUnavailable => "SECRET_STORE_UNAVAILABLE",
+        AppError::SecretNotFound => "SECRET_NOT_FOUND",
+        AppError::SecretAccessDenied => "SECRET_ACCESS_DENIED",
+        AppError::SecretCorrupted => "SECRET_CORRUPTED",
+        AppError::SecretAlreadyExists => "SECRET_ALREADY_EXISTS",
+        AppError::SecretProtectFailed => "SECRET_PROTECT_FAILED",
+        AppError::SecretUnprotectFailed => "SECRET_UNPROTECT_FAILED",
+        AppError::DatabaseKeyInvalid => "DATABASE_KEY_INVALID",
         AppError::BackupIntegrity => "BACKUP_INTEGRITY_FAILED",
         AppError::ProviderUnavailable => "PROVIDER_UNAVAILABLE",
         AppError::Configuration => "CONFIGURATION_REJECTED",
@@ -362,12 +410,32 @@ fn safe_error_code(error: &AppError) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapters::EncryptedBackupService;
+    #[cfg(feature = "sqlcipher")]
+    use crate::adapters::DatabaseKeyLifecycle;
+    use crate::adapters::{EncryptedBackupService, FakeSecretStore};
     use crate::domain::{Facility, FacilityId, Role, User, UserId, WorkstationId};
 
     fn actor_fixture(role: Role) -> (tempfile::TempDir, Database, SessionContext) {
         let temp = tempfile::tempdir().unwrap();
         let database = Database::open_synthetic(temp.path().join("foundation.sqlite")).unwrap();
+        let actor = actor_for_database(&database, role);
+        (temp, database, actor)
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    fn encrypted_actor_fixture(
+        role: Role,
+    ) -> (tempfile::TempDir, FakeSecretStore, Database, SessionContext) {
+        let temp = tempfile::tempdir().unwrap();
+        let secret_store = FakeSecretStore::new();
+        let database = DatabaseKeyLifecycle::new(&secret_store)
+            .create_encrypted_database(&temp.path().join("foundation.sqlite"))
+            .unwrap();
+        let actor = actor_for_database(&database, role);
+        (temp, secret_store, database, actor)
+    }
+
+    fn actor_for_database(database: &Database, role: Role) -> SessionContext {
         let now = Utc::now();
         let facility_id = FacilityId::new();
         let workstation_id = WorkstationId::new();
@@ -394,29 +462,75 @@ mod tests {
         database
             .create_user(&user, facility_id, "SYNTHETIC-NOT-A-VERIFIER", now)
             .unwrap();
-        let actor = database
+        database
             .create_session(&user, workstation_id, "synthetic-backup-session-token", now)
-            .unwrap();
-        (temp, database, actor)
+            .unwrap()
     }
 
+    #[cfg(feature = "sqlcipher")]
     #[test]
     fn authorized_manual_backup_is_audited() {
-        let (temp, database, actor) = actor_fixture(Role::FacilityAdministrator);
+        let (temp, secret_store, database, actor) =
+            encrypted_actor_fixture(Role::FacilityAdministrator);
         let backup_path = temp.path().join("manual.avxbak");
         let before = database.audit_event_count_value().unwrap();
         let service = EncryptedBackupService;
-        let receipt = BackupApplicationService::new(&database, &service)
+        let receipt = BackupApplicationService::new(&database, &service, &secret_store)
             .create_manual_backup(
                 &actor,
-                database.path(),
                 &backup_path,
                 b"synthetic-recovery-passphrase",
                 Utc::now(),
             )
             .unwrap();
-        assert_eq!(receipt.format_version, 1);
-        assert_eq!(database.audit_event_count_value().unwrap(), before + 1);
+        assert_eq!(receipt.format_version, 2);
+        assert_eq!(database.audit_event_count_value().unwrap(), before + 2);
+        assert_eq!(database.audit_action_count("BACKUP_STARTED").unwrap(), 1);
+        assert_eq!(database.audit_action_count("BACKUP_SUCCEEDED").unwrap(), 1);
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    #[test]
+    fn authorized_restore_validation_and_cutover_emit_required_audit_events() {
+        let (temp, secret_store, database, actor) =
+            encrypted_actor_fixture(Role::FacilityAdministrator);
+        let service = EncryptedBackupService;
+        let application = BackupApplicationService::new(&database, &service, &secret_store);
+        let backup_path = temp.path().join("manual.avxbak");
+        let destination = temp.path().join("restored.sqlite");
+        application
+            .create_manual_backup(
+                &actor,
+                &backup_path,
+                b"synthetic-recovery-passphrase",
+                Utc::now(),
+            )
+            .unwrap();
+        let staged = application
+            .stage_restore(
+                &actor,
+                &backup_path,
+                temp.path(),
+                b"synthetic-recovery-passphrase",
+                Utc::now(),
+            )
+            .unwrap();
+        application
+            .cutover(&actor, staged, &destination, Utc::now())
+            .unwrap();
+        assert_eq!(database.audit_action_count("RESTORE_STARTED").unwrap(), 1);
+        assert_eq!(database.audit_action_count("RESTORE_VALIDATED").unwrap(), 1);
+        assert_eq!(
+            database
+                .audit_action_count("RESTORE_CUTOVER_CONFIRMED")
+                .unwrap(),
+            1
+        );
+        assert!(
+            DatabaseKeyLifecycle::new(&secret_store)
+                .open_encrypted_database(&destination)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -425,10 +539,10 @@ mod tests {
         let backup_path = temp.path().join("manual.avxbak");
         let before = database.audit_event_count_value().unwrap();
         let service = EncryptedBackupService;
+        let secret_store = FakeSecretStore::new();
         assert!(matches!(
-            BackupApplicationService::new(&database, &service).create_manual_backup(
+            BackupApplicationService::new(&database, &service, &secret_store).create_manual_backup(
                 &actor,
-                database.path(),
                 &backup_path,
                 b"synthetic-recovery-passphrase",
                 Utc::now(),
@@ -437,5 +551,45 @@ mod tests {
         ));
         assert!(!backup_path.exists());
         assert_eq!(database.audit_event_count_value().unwrap(), before + 1);
+        assert_eq!(database.audit_action_count("BACKUP_FAILED").unwrap(), 1);
+    }
+
+    #[test]
+    fn forged_restore_request_is_denied_before_file_access_and_audited() {
+        let (temp, database, actor) = actor_fixture(Role::ClinicalSupport);
+        let service = EncryptedBackupService;
+        let secret_store = FakeSecretStore::new();
+        let before = database.audit_event_count_value().unwrap();
+        assert!(matches!(
+            BackupApplicationService::new(&database, &service, &secret_store).stage_restore(
+                &actor,
+                &temp.path().join("does-not-exist.avxbak"),
+                temp.path(),
+                b"synthetic-recovery-passphrase",
+                Utc::now(),
+            ),
+            Err(AppError::Authorization)
+        ));
+        assert_eq!(database.audit_event_count_value().unwrap(), before + 1);
+        assert_eq!(database.audit_action_count("RESTORE_FAILED").unwrap(), 1);
+    }
+
+    #[test]
+    fn restore_requires_recent_reauthentication() {
+        let (temp, database, mut actor) = actor_fixture(Role::FacilityAdministrator);
+        actor.recent_auth_at = Utc::now() - chrono::Duration::minutes(10);
+        let service = EncryptedBackupService;
+        let secret_store = FakeSecretStore::new();
+        assert!(matches!(
+            BackupApplicationService::new(&database, &service, &secret_store).stage_restore(
+                &actor,
+                &temp.path().join("does-not-exist.avxbak"),
+                temp.path(),
+                b"synthetic-recovery-passphrase",
+                Utc::now(),
+            ),
+            Err(AppError::Authentication)
+        ));
+        assert_eq!(database.audit_action_count("RESTORE_FAILED").unwrap(), 1);
     }
 }

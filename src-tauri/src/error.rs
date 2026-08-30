@@ -18,6 +18,20 @@ pub enum AppError {
     Validation,
     #[error("secret store unavailable")]
     SecretStoreUnavailable,
+    #[error("secret was not found")]
+    SecretNotFound,
+    #[error("secret store access denied")]
+    SecretAccessDenied,
+    #[error("protected secret is corrupted")]
+    SecretCorrupted,
+    #[error("secret already exists")]
+    SecretAlreadyExists,
+    #[error("secret protection failed")]
+    SecretProtectFailed,
+    #[error("secret recovery failed")]
+    SecretUnprotectFailed,
+    #[error("database key is invalid")]
+    DatabaseKeyInvalid,
     #[error("backup integrity validation failed")]
     BackupIntegrity,
     #[error("provider unavailable")]
@@ -51,6 +65,13 @@ impl From<AppError> for CommandError {
             AppError::InvalidTransition => "INVALID_TRANSITION",
             AppError::Validation => "VALIDATION_FAILED",
             AppError::SecretStoreUnavailable => "SECRET_STORE_UNAVAILABLE",
+            AppError::SecretNotFound => "SECRET_NOT_FOUND",
+            AppError::SecretAccessDenied => "SECRET_ACCESS_DENIED",
+            AppError::SecretCorrupted => "SECRET_CORRUPTED",
+            AppError::SecretAlreadyExists => "SECRET_ALREADY_EXISTS",
+            AppError::SecretProtectFailed => "SECRET_PROTECT_FAILED",
+            AppError::SecretUnprotectFailed => "SECRET_UNPROTECT_FAILED",
+            AppError::DatabaseKeyInvalid => "DATABASE_KEY_INVALID",
             AppError::BackupIntegrity => "BACKUP_INTEGRITY_FAILED",
             AppError::ProviderUnavailable => "PROVIDER_UNAVAILABLE",
             AppError::Configuration => "CONFIGURATION_REJECTED",

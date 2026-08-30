@@ -10,6 +10,8 @@ use chrono::{DateTime, Duration, Utc};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
+#[cfg(feature = "sqlcipher")]
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::domain::{
     EncounterId, EncounterState, ExternalIdentifier, Facility, FacilityId, ImmunizationEncounter,
@@ -17,9 +19,13 @@ use crate::domain::{
     User, UserId, WorkstationId, permissions_for_role,
 };
 use crate::error::AppError;
-use crate::ports::{AuditRepository, EncounterRepository, PatientRepository};
+use crate::ports::{
+    AuditRepository, EncounterRepository, EncryptedSnapshotSource, PatientRepository,
+    RestoreSummary,
+};
 
-use self::migrations::{MIGRATION_001, SCHEMA_VERSION};
+use self::migrations::MIGRATION_001;
+pub use self::migrations::SCHEMA_VERSION;
 
 pub struct Database {
     connection: Mutex<Connection>,
@@ -96,6 +102,167 @@ impl Database {
         Ok(Self {
             connection: Mutex::new(connection),
             path: PathBuf::from(":memory:"),
+        })
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    pub fn create_encrypted(path: impl AsRef<Path>, key: &[u8]) -> Result<Self, AppError> {
+        let path = path.as_ref().to_path_buf();
+        if path.exists() {
+            return Err(AppError::Validation);
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let connection = Connection::open(&path)?;
+        Self::apply_sqlcipher_key(&connection, key)?;
+        Self::configure(&connection, true)?;
+        Self::migrate(&connection)?;
+        Self::assert_classification(&connection, "SYNTHETIC_ONLY")?;
+        Ok(Self {
+            connection: Mutex::new(connection),
+            path,
+        })
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    pub fn open_encrypted(path: impl AsRef<Path>, key: &[u8]) -> Result<Self, AppError> {
+        let path = path.as_ref().to_path_buf();
+        if !path
+            .metadata()
+            .map(|metadata| metadata.is_file() && metadata.len() > 0)
+            .unwrap_or(false)
+        {
+            return Err(AppError::NotFound);
+        }
+        let connection = Connection::open(&path)?;
+        Self::apply_sqlcipher_key(&connection, key)?;
+        connection
+            .query_row("SELECT COUNT(*) FROM sqlite_master", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        Self::configure(&connection, true)?;
+        Self::assert_classification(&connection, "SYNTHETIC_ONLY")
+            .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        Self::migrate(&connection)?;
+        Ok(Self {
+            connection: Mutex::new(connection),
+            path,
+        })
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    fn apply_sqlcipher_key(connection: &Connection, key: &[u8]) -> Result<(), AppError> {
+        if key.len() != 32 {
+            return Err(AppError::SecretCorrupted);
+        }
+        let mut hex_key = Zeroizing::new(
+            key.iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>(),
+        );
+        let pragma_value = Zeroizing::new(format!("x'{}'", hex_key.as_str()));
+        connection
+            .pragma_update(None, "key", pragma_value.as_str())
+            .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        hex_key.zeroize();
+        connection
+            .pragma_update(None, "cipher_memory_security", "ON")
+            .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        let cipher_version: String = connection
+            .query_row("PRAGMA cipher_version", [], |row| row.get(0))
+            .map_err(|_| AppError::DatabaseKeyInvalid)?;
+        if cipher_version.is_empty() {
+            return Err(AppError::Configuration);
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    pub fn validate_encrypted_file(path: &Path, key: &[u8]) -> Result<RestoreSummary, AppError> {
+        let connection =
+            Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .map_err(|_| AppError::BackupIntegrity)?;
+        Self::apply_sqlcipher_key(&connection, key).map_err(|_| AppError::BackupIntegrity)?;
+        connection
+            .query_row("SELECT COUNT(*) FROM sqlite_master", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|_| AppError::BackupIntegrity)?;
+        Self::validate_connection_integrity(&connection)
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    fn validate_connection_integrity(connection: &Connection) -> Result<RestoreSummary, AppError> {
+        let quick_check: String = connection
+            .query_row("PRAGMA quick_check", [], |row| row.get(0))
+            .map_err(|_| AppError::BackupIntegrity)?;
+        if quick_check != "ok" {
+            return Err(AppError::BackupIntegrity);
+        }
+
+        let mut cipher_statement = connection
+            .prepare("PRAGMA cipher_integrity_check")
+            .map_err(|_| AppError::BackupIntegrity)?;
+        let cipher_results = cipher_statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|_| AppError::BackupIntegrity)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| AppError::BackupIntegrity)?;
+        if !cipher_results.is_empty()
+            && !(cipher_results.len() == 1 && cipher_results[0].eq_ignore_ascii_case("ok"))
+        {
+            return Err(AppError::BackupIntegrity);
+        }
+
+        let mut foreign_key_statement = connection
+            .prepare("PRAGMA foreign_key_check")
+            .map_err(|_| AppError::BackupIntegrity)?;
+        if foreign_key_statement
+            .query([])
+            .map_err(|_| AppError::BackupIntegrity)?
+            .next()
+            .map_err(|_| AppError::BackupIntegrity)?
+            .is_some()
+        {
+            return Err(AppError::BackupIntegrity);
+        }
+
+        let schema_metadata: String = connection
+            .query_row(
+                "SELECT value FROM app_metadata WHERE key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|_| AppError::BackupIntegrity)?;
+        if schema_metadata != SCHEMA_VERSION.to_string() {
+            return Err(AppError::BackupIntegrity);
+        }
+        let expected_checksum = format!("sha256:{}", sha256_text(MIGRATION_001));
+        let migration_checksum: String = connection
+            .query_row(
+                "SELECT checksum FROM schema_migrations WHERE version = ?1",
+                params![SCHEMA_VERSION],
+                |row| row.get(0),
+            )
+            .map_err(|_| AppError::BackupIntegrity)?;
+        if migration_checksum != expected_checksum {
+            return Err(AppError::BackupIntegrity);
+        }
+        Self::assert_classification(connection, "SYNTHETIC_ONLY")
+            .map_err(|_| AppError::BackupIntegrity)?;
+
+        let audit_event_count = verify_audit_chain(connection)?;
+        let patient_count = validated_revision_count(connection, "patients")?;
+        let encounter_count = validated_revision_count(connection, "immunization_encounters")?;
+        validated_revision_count(connection, "users")?;
+
+        Ok(RestoreSummary {
+            schema_version: SCHEMA_VERSION,
+            audit_event_count,
+            patient_count,
+            encounter_count,
         })
     }
 
@@ -752,6 +919,20 @@ impl Database {
         connection.execute_batch(sql)?;
         Ok(())
     }
+
+    #[cfg(test)]
+    pub fn audit_action_count(&self, action: &str) -> Result<u64, AppError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| AppError::Persistence(rusqlite::Error::InvalidQuery))?;
+        let count: i64 = connection.query_row(
+            "SELECT COUNT(*) FROM audit_events WHERE action_code = ?1",
+            params![action],
+            |row| row.get(0),
+        )?;
+        u64::try_from(count).map_err(|_| AppError::Validation)
+    }
 }
 
 impl PatientRepository for Database {
@@ -782,6 +963,143 @@ impl AuditRepository for Database {
     fn audit_event_count(&self) -> Result<u64, AppError> {
         self.audit_event_count_value()
     }
+}
+
+impl EncryptedSnapshotSource for Database {
+    fn write_encrypted_snapshot(
+        &self,
+        destination: &Path,
+        snapshot_key: &[u8],
+    ) -> Result<RestoreSummary, AppError> {
+        #[cfg(feature = "sqlcipher")]
+        {
+            use std::time::Duration as StdDuration;
+
+            if destination.exists() {
+                return Err(AppError::Validation);
+            }
+            let source = self
+                .connection
+                .lock()
+                .map_err(|_| AppError::Persistence(rusqlite::Error::InvalidQuery))?;
+            let mut destination_connection = Connection::open(destination)?;
+            Self::apply_sqlcipher_key(&destination_connection, snapshot_key)?;
+            destination_connection.pragma_update(None, "journal_mode", "DELETE")?;
+            destination_connection.pragma_update(None, "synchronous", "FULL")?;
+            {
+                let backup = rusqlite::backup::Backup::new(&source, &mut destination_connection)?;
+                backup.run_to_completion(8, StdDuration::from_millis(10), None)?;
+            }
+            destination_connection.pragma_update(None, "journal_mode", "DELETE")?;
+            drop(destination_connection);
+            Self::validate_encrypted_file(destination, snapshot_key)
+        }
+        #[cfg(not(feature = "sqlcipher"))]
+        {
+            let _ = (destination, snapshot_key);
+            Err(AppError::Configuration)
+        }
+    }
+}
+
+#[cfg(feature = "sqlcipher")]
+fn validated_revision_count(connection: &Connection, table: &str) -> Result<u64, AppError> {
+    let sql = match table {
+        "patients" => "SELECT COUNT(*), COALESCE(MIN(revision), 1) FROM patients",
+        "immunization_encounters" => {
+            "SELECT COUNT(*), COALESCE(MIN(revision), 1) FROM immunization_encounters"
+        }
+        "users" => "SELECT COUNT(*), COALESCE(MIN(revision), 1) FROM users",
+        _ => return Err(AppError::BackupIntegrity),
+    };
+    let (count, minimum_revision): (i64, i64) = connection
+        .query_row(sql, [], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|_| AppError::BackupIntegrity)?;
+    if minimum_revision < 1 {
+        return Err(AppError::BackupIntegrity);
+    }
+    u64::try_from(count).map_err(|_| AppError::BackupIntegrity)
+}
+
+#[cfg(feature = "sqlcipher")]
+fn verify_audit_chain(connection: &Connection) -> Result<u64, AppError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT occurred_at_utc, recorded_at_utc, actor_id, session_id, workstation_id,
+                    facility_id, action_code, entity_type, entity_id, entity_revision, outcome,
+                    correlation_id, metadata_json, previous_hash, event_hash
+             FROM audit_events ORDER BY sequence",
+        )
+        .map_err(|_| AppError::BackupIntegrity)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, String>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, Option<i64>>(9)?,
+                row.get::<_, String>(10)?,
+                row.get::<_, String>(11)?,
+                row.get::<_, String>(12)?,
+                row.get::<_, Option<String>>(13)?,
+                row.get::<_, String>(14)?,
+            ))
+        })
+        .map_err(|_| AppError::BackupIntegrity)?;
+    let mut expected_previous: Option<String> = None;
+    let mut count = 0_u64;
+    for row in rows {
+        let (
+            occurred,
+            recorded,
+            actor,
+            session,
+            workstation,
+            facility,
+            action,
+            entity_type,
+            entity_id,
+            revision,
+            outcome,
+            correlation,
+            metadata,
+            previous_hash,
+            event_hash,
+        ) = row.map_err(|_| AppError::BackupIntegrity)?;
+        if occurred != recorded || previous_hash != expected_previous {
+            return Err(AppError::BackupIntegrity);
+        }
+        serde_json::from_str::<serde_json::Value>(&metadata)
+            .map_err(|_| AppError::BackupIntegrity)?;
+        let canonical = format!(
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+            expected_previous.as_deref().unwrap_or("GENESIS"),
+            occurred,
+            actor.as_deref().unwrap_or_default(),
+            session.as_deref().unwrap_or_default(),
+            workstation,
+            facility,
+            action,
+            entity_type,
+            entity_id,
+            revision.map(|value| value.to_string()).unwrap_or_default(),
+            outcome,
+            correlation,
+            metadata,
+        );
+        if sha256_text(&canonical) != event_hash {
+            return Err(AppError::BackupIntegrity);
+        }
+        expected_previous = Some(event_hash);
+        count = count.checked_add(1).ok_or(AppError::BackupIntegrity)?;
+    }
+    Ok(count)
 }
 
 fn append_audit(
@@ -927,6 +1245,8 @@ fn revision_from_i64(value: i64) -> Result<u64, AppError> {
 mod tests {
     use super::*;
     use chrono::NaiveDate;
+    #[cfg(feature = "sqlcipher")]
+    use std::fs;
 
     #[test]
     fn synthetic_mode_never_reclassifies_an_existing_unlabeled_database() {
@@ -1031,5 +1351,126 @@ mod tests {
         let patient = reopened.get_patient_by_id(patient_id).unwrap();
         assert_eq!(patient.name.first_surname, "Persistence");
         assert_eq!(reopened.audit_event_count_value().unwrap(), 2);
+    }
+
+    #[cfg(feature = "sqlcipher")]
+    #[test]
+    fn integrated_encrypted_path_preserves_constraints_revisions_audit_and_wal_confidentiality() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("integrated-encrypted.sqlite");
+        let key = Zeroizing::new(vec![7_u8; 32]);
+        let database = Database::create_encrypted(&path, &key).unwrap();
+        {
+            let connection = database.connection.lock().unwrap();
+            let foreign_keys: i64 = connection
+                .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+                .unwrap();
+            let journal_mode: String = connection
+                .query_row("PRAGMA journal_mode", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(foreign_keys, 1);
+            assert_eq!(journal_mode.to_ascii_lowercase(), "wal");
+        }
+
+        let now = Utc::now();
+        let facility_id = FacilityId::new();
+        let workstation_id = WorkstationId::new();
+        database
+            .create_facility_and_workstation(
+                &Facility {
+                    facility_id,
+                    name: "Synthetic Encrypted Facility".to_owned(),
+                    timezone: "America/Puerto_Rico".to_owned(),
+                    active: true,
+                },
+                workstation_id,
+                "SYNTHETIC-ENCRYPTED-WS",
+                now,
+            )
+            .unwrap();
+        let user = User {
+            user_id: UserId::new(),
+            username: "synthetic.encrypted".to_owned(),
+            display_name: "Synthetic Encrypted User".to_owned(),
+            active: true,
+            roles: vec![Role::VaccinatingProfessional],
+        };
+        database
+            .create_user(&user, facility_id, "SYNTHETIC-NOT-A-VERIFIER", now)
+            .unwrap();
+        let actor = database
+            .create_session(&user, workstation_id, "synthetic-encrypted-session", now)
+            .unwrap();
+        let patient_id = PatientId::new();
+        database
+            .create_patient_with_audit(
+                &actor,
+                &Patient {
+                    patient_id,
+                    revision: 1,
+                    name: PatientName {
+                        given_names: "Synthetic".to_owned(),
+                        middle_names: None,
+                        first_surname: "SYNTHETIC-WAL-SENTINEL".to_owned(),
+                        second_surname: None,
+                        suffix: None,
+                        preferred_name: None,
+                    },
+                    date_of_birth: NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
+                    address: None,
+                    external_identifiers: Vec::new(),
+                    created_by: user.user_id,
+                },
+            )
+            .unwrap();
+        let encounter_id = EncounterId::new();
+        database
+            .create_encounter_with_audit(
+                &actor,
+                &ImmunizationEncounter {
+                    encounter_id,
+                    patient_id,
+                    facility_id,
+                    responsible_professional_id: user.user_id,
+                    state: EncounterState::Draft,
+                    revision: 1,
+                },
+            )
+            .unwrap();
+        let transitioned = database
+            .transition_encounter_with_audit(
+                &actor,
+                encounter_id,
+                1,
+                EncounterState::ReadyToAdminister,
+            )
+            .unwrap();
+        assert_eq!(transitioned.revision, 2);
+        assert!(matches!(
+            database.transition_encounter_with_audit(
+                &actor,
+                encounter_id,
+                1,
+                EncounterState::AdministeredPendingDocumentation,
+            ),
+            Err(AppError::StaleRevision)
+        ));
+        assert_eq!(database.audit_event_count_value().unwrap(), 4);
+
+        for entry in fs::read_dir(temp.path()).unwrap() {
+            let bytes = fs::read(entry.unwrap().path()).unwrap();
+            assert!(
+                !bytes
+                    .windows(22)
+                    .any(|window| window == b"SYNTHETIC-WAL-SENTINEL")
+            );
+        }
+        drop(database);
+        let reopened = Database::open_encrypted(&path, &key).unwrap();
+        assert_eq!(
+            reopened.get_encounter_by_id(encounter_id).unwrap().revision,
+            2
+        );
+        assert_eq!(reopened.audit_event_count_value().unwrap(), 4);
     }
 }

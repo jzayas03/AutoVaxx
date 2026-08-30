@@ -172,7 +172,7 @@ Microsoft documents that default DPAPI protection is tied to a user/machine cont
 
 **Workflow and controls.**
 
-- A facility administrator with recent re-authentication may create an on-demand backup, configure a schedule/destination, or initiate restore.
+- A facility administrator may create an on-demand backup or configure a future schedule/destination. Restore staging and cutover require authentication within the previous five minutes.
 - Scheduled backups run only to an explicitly configured local path or removable volume; there is no cloud or implicit network destination.
 - Removable media is supported as a selected destination because it enables off-device recovery, but the application neither requires nor claims that the media itself is encrypted.
 - Creation uses a supported consistent-snapshot API, verifies the resulting container, records success/failure as an audit event, and reports safe non-PHI operational status.
