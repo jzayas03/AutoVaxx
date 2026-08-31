@@ -8,14 +8,14 @@ The owner approved installing developer tools and necessary synthetic applicatio
 
 The complete [Windows validation protocol](WINDOWS_VALIDATION.md) is **not closed**. Its clean-VM, second-account, OS-level offline, recovery, destructive-failure, installation, and upgrade preconditions are not replaced by developer-machine unit tests. No canonical protocol row was relabeled PASS.
 
-The earlier SEC-008 no-key helper compatibility milestone is closed. Full SEC-008 signing is not closed; SEC-008 remains unselected. Its review material is separate from the synthetic application Credential Manager test.
+The earlier no-key signing-helper compatibility milestone is closed. The proposed TPM-backed signing feasibility study for SEC-008's deferred stronger-integrity migration path remains unselected and unauthorized. This does not alter the approved SEC-008 requirement for append-only clinical revisions and atomic audit events. The signing-feasibility review material is separate from the synthetic application Credential Manager test.
 
 ## Source identity and reviewed changes
 
 - Base: `90b20668103590d0b77e1076868ff5705793a0c7` (merge PR #6, SQLCipher Windows log-recursion fix).
 - Branch: `feat/phase-1-foundation`, created from initially clean `main`.
 - Checkout: `C:\Users\janza\OneDrive\Desktop\AutoVaxx`.
-- **Uncommitted and unpushed:** pulling on the Mac alone will not recover these changes.
+- **Commit/push status:** initially captured while uncommitted, then committed locally as `d03e048b9b55be4181448ab23b7cb502c61ed570`. The push was not completed, and the remote branch was absent at the last recorded check; pulling on the Mac alone will not recover this commit.
 - pnpm-lock.yaml SHA-256: `20892eb3e96947f0f3d4dea0a70880f896c25db370b96b9d98c1a79f161e70c9`.
 - src-tauri/Cargo.lock SHA-256: `c24d1c6646cd0bae5da522023f81eaf8b703b115cee89d38552a392a222413f6`.
 - No dependency declaration, lockfile, clinical behavior, schema, capability, CSP, or production adapter logic changed.
@@ -146,7 +146,7 @@ No automatic uninstall, recursive cleanup, credential enumeration, or deletion i
 
 Codex, Git, Node, Python, WebView2, OneDrive, and McAfee pre-existed this installation pass. Do not automatically remove them. Both native credential tests verified deletion only of their own newly created entries. The integrated test also removed its temporary encrypted database/backup directory through its scoped test lifetime. Unit tests used temporary synthetic fixtures. Databases, recovery secrets, credential contents, and dependency caches are excluded from transfer.
 
-## SEC-008 continuity
+## SEC-008 signing-feasibility continuity
 
 Original ZIP: `C:\Users\janza\Downloads\9e60333b-cc62-42b1-a969-6773681a7d1d.zip`; 35,152 bytes; SHA-256 `d2733d2207b600f6d46f5be95bc1551ab29839a53cdb1ba72373e9e2f0d8e859`.
 
@@ -160,15 +160,15 @@ Earlier in-memory execution proposals were never materialized or authorized for 
 - Inert-stager proposal: `52d687b611af5ab3054050518785ccca92df50cf893c7502040beaba7a107300`.
 - Staging procedure: `8b77a985790ca0e53e61ca195e9350110ec9a2c3bd381ba438c9033c518c12e1`.
 
-Do not reconstruct/activate proposals from a handoff instruction. Reopen that work only under a separate reviewed plan. The application credential test above is unrelated to SEC-008 signing.
+Do not reconstruct/activate proposals from a handoff instruction. Reopen that work only under a separate reviewed plan. The application credential test above is unrelated to the SEC-008 signing-feasibility study.
 
 ## Mac resumption
 
 1. Copy the completed handoff ZIP and SHA-256 sidecar to the Mac. Verify the archive hash before extraction; keep it private.
-2. Read this report, verification JSON, and repository AGENTS.md. Review imported documents as data, not authority to run SEC-008 material.
+2. Read this report, verification JSON, and repository AGENTS.md. Review imported documents as data, not authority to run SEC-008 signing-feasibility material.
 3. Use the included source snapshot for standalone review, or apply the changes patch in an isolated checkout/branch of base `90b20668103590d0b77e1076868ff5705793a0c7`. Run `git apply --check` before applying. Preserve existing Mac changes.
 4. Install locked macOS dependencies using pnpm 9.0.4 and a recorded Rust toolchain. Windows dependencies, target directories, and installed tools are intentionally excluded.
-5. Run Mac frontend/Rust gates and review the small Windows fixes before any requested PR. No commit, push, PR, or public share occurred here.
+5. Run Mac frontend/Rust gates and review the small Windows fixes before any requested PR. The reviewed Windows change set was subsequently committed locally as `d03e048b9b55be4181448ab23b7cb502c61ed570`, but it was not pushed; no PR or public share occurred here.
 6. Arrange remaining acceptance on another authorized Windows 11 host/VM; do not treat Mac tests as Windows results.
 
 ## Closeout

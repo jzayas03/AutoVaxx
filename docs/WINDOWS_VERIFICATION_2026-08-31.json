@@ -622,7 +622,10 @@
   },
   "SEC008": {
     "CapturedUtc": "2026-08-31T20:55:49.2244282Z",
+    "SelectionScope": "TPM-backed signing feasibility study for SEC-008's deferred stronger-integrity migration path; the approved append-only clinical revisions and atomic audit requirement is unchanged",
     "SEC008Selected": false,
+    "SEC008SigningFeasibilitySelected": false,
+    "RepositorySEC008AppendOnlyAuditDecisionChanged": false,
     "FullSyncExclusionVerified": false,
     "IndependentMacAuthorProvenanceVerified": false,
     "HarnessInvoked": false,
