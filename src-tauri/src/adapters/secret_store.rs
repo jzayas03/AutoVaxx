@@ -266,6 +266,42 @@ pub fn generate_database_key() -> Result<Zeroizing<Vec<u8>>, AppError> {
 mod tests {
     use super::*;
 
+    fn with_temporary_secret(
+        store: &impl SecretStore,
+        key_reference: &str,
+        key: &[u8],
+        checks: impl FnOnce(),
+    ) {
+        store.store(key_reference, key).unwrap();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(checks));
+        assert!(
+            store.delete(key_reference).is_ok(),
+            "Synthetic credential cleanup failed: {key_reference}"
+        );
+        assert!(
+            matches!(store.load(key_reference), Err(AppError::SecretNotFound)),
+            "Synthetic credential deletion was not confirmed: {key_reference}"
+        );
+        if let Err(panic) = result {
+            std::panic::resume_unwind(panic);
+        }
+    }
+
+    #[test]
+    fn temporary_secret_is_removed_when_checks_panic() {
+        let store = FakeSecretStore::new();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            with_temporary_secret(&store, "synthetic-cleanup", &[7; 32], || {
+                panic!("synthetic assertion failure");
+            });
+        }));
+        assert!(result.is_err());
+        assert!(matches!(
+            store.load("synthetic-cleanup"),
+            Err(AppError::SecretNotFound)
+        ));
+    }
+
     #[test]
     fn random_database_key_round_trips_through_secret_store() {
         let store = FakeSecretStore::new();
@@ -334,16 +370,16 @@ mod tests {
         let store = WindowsSecretStore::new();
         let key_reference = format!("autovaxx-ci-{}", uuid::Uuid::new_v4());
         let key = generate_database_key().unwrap();
-        store.store(&key_reference, &key).unwrap();
-        assert_eq!(store.load(&key_reference).unwrap(), *key);
-        assert!(matches!(
-            store.store(&key_reference, &[9; 32]),
-            Err(AppError::SecretAlreadyExists)
-        ));
-        store.delete(&key_reference).unwrap();
-        assert!(matches!(
-            store.load(&key_reference),
-            Err(AppError::SecretNotFound)
-        ));
+        with_temporary_secret(&store, &key_reference, &key, || {
+            let recovered = Zeroizing::new(store.load(&key_reference).unwrap());
+            assert!(
+                recovered.as_slice() == key.as_slice(),
+                "Synthetic credential round trip differs"
+            );
+            assert!(matches!(
+                store.store(&key_reference, &[9; 32]),
+                Err(AppError::SecretAlreadyExists)
+            ));
+        });
     }
 }

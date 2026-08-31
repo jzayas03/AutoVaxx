@@ -87,6 +87,8 @@ jobs:
           Get-CimInstance Win32_ComputerSystem | Select-Object TotalPhysicalMemory
           rustc --version --verbose
           node --version
+      - run: pnpm format:check
+      - run: pnpm policy:check
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
       - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --all-targets -- -D warnings

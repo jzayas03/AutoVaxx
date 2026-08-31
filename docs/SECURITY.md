@@ -2,6 +2,8 @@
 
 **Status:** Approved Phase 1 baseline; deployment-specific risk analysis and real-PHI gates remain required
 
+**Open Windows finding (2026-08-31):** A synthetic developer-host smoke test observed two established external HTTPS connections owned by the application's WebView2 process. The original request purpose and payload were not captured. A later, separate diagnostic startup trace identified two request starts to `config.edge.skype.com`; its origin-only summary does not establish payload safety or absence of other egress. Passing source CSP/capability checks does not establish runtime egress denial. Network acceptance and real-PHI release remain blocked pending a reviewed runtime/network control and Windows verification; see [the Windows handoff evidence](WINDOWS_BUILD_HANDOFF.md). No firewall, browser-security, diagnostic-data, or sync setting was changed to conceal or bypass this finding.
+
 **Data classification:** Patient data, clinical records, audit data, transcripts, audio, registry payloads, and acknowledgements are sensitive and may be PHI/ePHI
 
 **Default posture:** Local-only, deny network egress, least privilege, fail closed

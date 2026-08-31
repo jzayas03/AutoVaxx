@@ -296,3 +296,187 @@ mod tests {
         assert!(!DatabaseKeyLifecycle::descriptor_path(&path).exists());
     }
 }
+
+#[cfg(all(test, feature = "sqlcipher", windows))]
+mod windows_integration_tests {
+    use super::*;
+    use crate::adapters::{EncryptedBackupService, WindowsSecretStore};
+    use crate::ports::BackupService;
+    use std::sync::Mutex;
+
+    // Track only successful writes made by this test. Never adopt or clean up
+    // an existing credential, and attempt every owned cleanup before failing.
+    struct OwnedWindowsTestStore {
+        inner: WindowsSecretStore,
+        references: Mutex<Vec<String>>,
+    }
+
+    impl OwnedWindowsTestStore {
+        fn new() -> Self {
+            Self {
+                inner: WindowsSecretStore::new(),
+                references: Mutex::new(Vec::new()),
+            }
+        }
+
+        fn cleanup(&self) -> Vec<String> {
+            let references = self.references.lock().unwrap().clone();
+            let mut failures = Vec::new();
+            for reference in references {
+                let deleted = matches!(
+                    self.delete(&reference),
+                    Ok(()) | Err(AppError::SecretNotFound)
+                );
+                let absent = matches!(
+                    self.load(&reference).map(Zeroizing::new),
+                    Err(AppError::SecretNotFound)
+                );
+                if !deleted || !absent {
+                    failures.push(reference);
+                }
+            }
+            failures
+        }
+    }
+
+    impl SecretStore for OwnedWindowsTestStore {
+        fn store(&self, reference: &str, secret: &[u8]) -> Result<(), AppError> {
+            let mut references = self.references.lock().unwrap();
+            self.inner.store(reference, secret)?;
+            references.push(reference.to_owned());
+            Ok(())
+        }
+
+        fn load(&self, reference: &str) -> Result<Vec<u8>, AppError> {
+            self.inner.load(reference)
+        }
+
+        fn delete(&self, reference: &str) -> Result<(), AppError> {
+            let mut references = self.references.lock().unwrap();
+            if !references.iter().any(|owned| owned == reference) {
+                return Err(AppError::Validation);
+            }
+            let result = self.inner.delete(reference);
+            if matches!(result, Ok(()) | Err(AppError::SecretNotFound)) {
+                references.retain(|owned| owned != reference);
+            }
+            result
+        }
+    }
+
+    fn verify_marker(database: &Database) {
+        database
+            .execute_test_sql(
+                "CREATE TEMP TABLE marker_verification (valid INTEGER NOT NULL CHECK(valid = 1));
+                 INSERT INTO marker_verification (valid)
+                 SELECT CASE WHEN EXISTS (
+                   SELECT 1 FROM synthetic_markers
+                   WHERE marker = 'SYNTHETIC-PHI-EQUIVALENT-SENTINEL'
+                 ) THEN 1 ELSE 0 END;",
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn windows_credential_backed_database_and_backup_recover_after_key_loss() {
+        let store = OwnedWindowsTestStore::new();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let temp = tempfile::Builder::new()
+                .prefix("autovaxx-native-validation-")
+                .tempdir()
+                .unwrap();
+            let source = temp.path().join("source.sqlite");
+            let backup = temp.path().join("recovery.avxbak");
+            let restored = temp.path().join("restored.sqlite");
+            let lifecycle = DatabaseKeyLifecycle::new(&store);
+            let database = lifecycle.create_encrypted_database(&source).unwrap();
+            database
+                .execute_test_sql(
+                    "CREATE TABLE synthetic_markers (marker TEXT NOT NULL);
+                     INSERT INTO synthetic_markers (marker)
+                     VALUES ('SYNTHETIC-PHI-EQUIVALENT-SENTINEL');",
+                )
+                .unwrap();
+
+            let recovered = lifecycle.recover(&source).unwrap();
+            let original_reference = recovered.descriptor.key_reference.clone();
+            for path in [
+                source.clone(),
+                source.with_file_name("source.sqlite-wal"),
+                DatabaseKeyLifecycle::descriptor_path(&source),
+            ] {
+                let bytes = fs::read(path).unwrap();
+                assert!(!bytes.starts_with(b"SQLite format 3\0"));
+                assert!(
+                    !bytes
+                        .windows(recovered.key.len())
+                        .any(|part| { part == recovered.key.as_slice() })
+                );
+                let marker = b"SYNTHETIC-PHI-EQUIVALENT-SENTINEL";
+                assert!(!bytes.windows(marker.len()).any(|part| part == marker));
+            }
+            drop(recovered);
+            drop(database);
+
+            // Reconstruct the lifecycle and reopen through the real Windows
+            // credential API, rather than an in-memory fake-store cache.
+            let reopened = DatabaseKeyLifecycle::new(&store)
+                .open_encrypted_database(&source)
+                .unwrap();
+            verify_marker(&reopened);
+            let recovery_secret = generate_database_key().unwrap();
+            let service = EncryptedBackupService;
+            service
+                .create_encrypted_backup(&reopened, &backup, &recovery_secret)
+                .unwrap();
+            drop(reopened);
+
+            let original_bytes = fs::read(&source).unwrap();
+            store.delete(&original_reference).unwrap();
+            assert!(matches!(
+                lifecycle.open_encrypted_database(&source),
+                Err(AppError::SecretNotFound)
+            ));
+            assert!(matches!(
+                store.load(&original_reference),
+                Err(AppError::SecretNotFound)
+            ));
+            assert!(fs::read(&source).unwrap() == original_bytes);
+
+            // Recovery must work without the original credential, and create
+            // a different protected reference for a new destination.
+            let staged = service
+                .stage_restore(&backup, temp.path(), &recovery_secret)
+                .unwrap();
+            let staged_path = staged.staged_database_path.clone();
+            service.cutover(staged, &restored, &store).unwrap();
+            assert!(!staged_path.exists());
+            let restored_key = lifecycle.recover(&restored).unwrap();
+            assert_ne!(restored_key.descriptor.key_reference, original_reference);
+            for path in [&backup, &restored] {
+                let bytes = fs::read(path).unwrap();
+                assert!(!bytes.starts_with(b"SQLite format 3\0"));
+                let marker = b"SYNTHETIC-PHI-EQUIVALENT-SENTINEL";
+                assert!(!bytes.windows(marker.len()).any(|part| part == marker));
+                assert!(
+                    !bytes
+                        .windows(restored_key.key.len())
+                        .any(|part| { part == restored_key.key.as_slice() })
+                );
+            }
+            drop(restored_key);
+            let restored_database = lifecycle.open_encrypted_database(&restored).unwrap();
+            verify_marker(&restored_database);
+            drop(restored_database);
+            assert!(fs::read(&source).unwrap() == original_bytes);
+        }));
+        let cleanup_failures = store.cleanup();
+        assert!(
+            cleanup_failures.is_empty(),
+            "Owned synthetic credential cleanup failed: {cleanup_failures:?}"
+        );
+        if let Err(panic) = result {
+            std::panic::resume_unwind(panic);
+        }
+    }
+}
