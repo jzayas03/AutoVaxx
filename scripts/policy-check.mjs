@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, join, relative } from "node:path";
+import { extname, join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../", import.meta.url));
 const textExtensions = new Set([
   ".rs",
   ".ts",
@@ -54,7 +55,7 @@ const secretPatterns = [
 ];
 
 for (const path of files) {
-  const relativePath = relative(root, path);
+  const relativePath = relative(root, path).split(sep).join("/");
   const content = readFileSync(path, "utf8");
   if (relativePath !== "scripts/policy-check.mjs") {
     for (const token of forbiddenNetwork) {

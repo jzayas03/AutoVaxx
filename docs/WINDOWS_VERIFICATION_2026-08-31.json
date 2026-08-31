@@ -1,0 +1,745 @@
+{
+  "SchemaVersion": 1,
+  "CapturedUtc": "2026-08-31T21:22:24.584611+00:00",
+  "Project": "AutoVaxx Phase 1 synthetic-only Windows build handoff",
+  "Operator": "Codex under owner approval; normal user token for build/test commands",
+  "BaseCommit": "90b20668103590d0b77e1076868ff5705793a0c7",
+  "Branch": "feat/phase-1-foundation",
+  "ChangesCommitted": false,
+  "ChangesPushed": false,
+  "Repository": "C:\\Users\\janza\\OneDrive\\Desktop\\AutoVaxx",
+  "Lockfiles": [
+    {
+      "Path": "pnpm-lock.yaml",
+      "Bytes": 88110,
+      "SHA256": "20892eb3e96947f0f3d4dea0a70880f896c25db370b96b9d98c1a79f161e70c9"
+    },
+    {
+      "Path": "src-tauri/Cargo.lock",
+      "Bytes": 120267,
+      "SHA256": "c24d1c6646cd0bae5da522023f81eaf8b703b115cee89d38552a392a222413f6"
+    }
+  ],
+  "Host": {
+    "CapturedUtc": "2026-08-31T20:47:48.2380782Z",
+    "OS": "Microsoft Windows 11 Home",
+    "Build": "26200",
+    "Architecture": "64-bit",
+    "CPU": "11th Gen Intel(R) Core(TM) i7-1195G7 @ 2.90GHz",
+    "RAMBytes": 16905965568,
+    "SystemDrive": {
+      "FileSystem": "NTFS",
+      "SizeBytes": 492511948800,
+      "FreeBytes": 345755066368
+    },
+    "CurrentTokenAdministrator": false,
+    "Node": "v24.19.0",
+    "Rust": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "Cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+    "CMake": "cmake version 3.31.6-msvc6",
+    "CompilerFileVersion": "19.44.35228.0",
+    "Downloads": [
+      {
+        "Name": "cargo-audit-x86_64-pc-windows-msvc-v0.22.2.zip",
+        "Bytes": 6192256,
+        "SHA256": "0a7316540862c13d954f648917ceacca593747baed6eec180fafa590be2710ab"
+      },
+      {
+        "Name": "gitleaks_8.30.1_windows_x64.zip",
+        "Bytes": 8438883,
+        "SHA256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+      },
+      {
+        "Name": "rustup-init.exe",
+        "Bytes": 12814336,
+        "SHA256": "86478e53f769379d7f0ebfa7c9aa97cb76ca92233f79aa2cc0dbee2efaac73c7"
+      },
+      {
+        "Name": "rustup-init.exe.sha256",
+        "Bytes": 65,
+        "SHA256": "81143e04fc9a74147e6b9f4e72175f391587fe5ea5d1ad5f8bee25a3f45da7ff"
+      },
+      {
+        "Name": "strawberry-perl-5.42.2.1-64bit-portable.zip",
+        "Bytes": 304301401,
+        "SHA256": "32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898"
+      },
+      {
+        "Name": "vs_buildtools.exe",
+        "Bytes": 4473896,
+        "SHA256": "2aeac090a9cfb2c56474aa9a6c5817ad8cfb879539e0ed1aecec33de9fc2dc4f"
+      }
+    ]
+  },
+  "InstallNotes": {
+    "MSVCInstallerExitCode": 3010,
+    "RebootPerformed": false,
+    "SubsequentVswhere": {
+      "IsComplete": true,
+      "IsLaunchable": true,
+      "IsRebootRequired": false
+    },
+    "PersistentPathChanged": false,
+    "RepositoryOwnershipOrACLChanged": false,
+    "FirewallOrSyncSettingsChanged": false
+  },
+  "Frontend": [
+    {
+      "Gate": "format:check",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:01.9311977Z",
+      "FinishedUtc": "2026-08-31T20:22:04.9179667Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-format-check.log"
+    },
+    {
+      "Gate": "lint",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:05.0076376Z",
+      "FinishedUtc": "2026-08-31T20:22:14.3209817Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-lint.log"
+    },
+    {
+      "Gate": "typecheck",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:14.3243081Z",
+      "FinishedUtc": "2026-08-31T20:22:18.8605213Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-typecheck.log"
+    },
+    {
+      "Gate": "test",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:18.8837809Z",
+      "FinishedUtc": "2026-08-31T20:22:28.2676314Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-test.log"
+    },
+    {
+      "Gate": "build",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:28.2708015Z",
+      "FinishedUtc": "2026-08-31T20:22:31.6595907Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-build.log"
+    },
+    {
+      "Gate": "policy:check",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:31.6622698Z",
+      "FinishedUtc": "2026-08-31T20:22:32.7193334Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-policy-check.log"
+    },
+    {
+      "Gate": "license:check",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:22:32.7214354Z",
+      "FinishedUtc": "2026-08-31T20:22:36.9523791Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\frontend-verified-license-check.log"
+    }
+  ],
+  "RustAndPackaging": [
+    {
+      "Gate": "Complete default Windows Rust suite",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:56:10.8232463Z",
+      "FinishedUtc": "2026-08-31T20:57:01.0241921Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\rust-default-complete-tests.log",
+      "Command": "cargo test --manifest-path src-tauri/Cargo.toml --offline --locked"
+    },
+    {
+      "Gate": "Full synthetic SQLCipher and WindowsSecretStore Rust suite",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:32:35.6579215Z",
+      "FinishedUtc": "2026-08-31T20:44:48.2010498Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\rust-sqlcipher-tests.log",
+      "Command": "cargo test --manifest-path src-tauri/Cargo.toml --offline --locked --no-default-features --features synthetic-only,sqlcipher,windows-secret-store"
+    },
+    {
+      "Gate": "rust-default-clippy",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:44:32.1460766Z",
+      "FinishedUtc": "2026-08-31T20:47:33.3606851Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\rust-default-clippy.log",
+      "Command": "cargo clippy --manifest-path src-tauri/Cargo.toml --offline --locked --all-targets -- -D warnings"
+    },
+    {
+      "Gate": "rust-sqlcipher-clippy",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:47:33.4050076Z",
+      "FinishedUtc": "2026-08-31T20:47:43.9096152Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\rust-sqlcipher-clippy.log",
+      "Command": "cargo clippy --manifest-path src-tauri/Cargo.toml --offline --locked --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --all-targets -- -D warnings"
+    },
+    {
+      "Gate": "rust-production-check",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:47:43.9144993Z",
+      "FinishedUtc": "2026-08-31T20:47:53.3699866Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\rust-production-check.log",
+      "Command": "cargo check --manifest-path src-tauri/Cargo.toml --offline --locked --no-default-features --features production"
+    },
+    {
+      "Gate": "One random synthetic Windows Credential Manager create/read/refuse-replacement/delete test",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:32:11.2644985Z",
+      "FinishedUtc": "2026-08-31T20:32:18.2889817Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\windows-credential-test.log",
+      "Command": "cargo test --manifest-path src-tauri/Cargo.toml --offline --locked --lib windows_credential_store_protects_recovers_and_deletes_synthetic_key -- --test-threads=1"
+    },
+    {
+      "Gate": "Unsigned synthetic Tauri release and NSIS build",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T20:48:45.8416925Z",
+      "FinishedUtc": "2026-08-31T20:50:26.8051635Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\tauri-nsis-build.log",
+      "Command": "pnpm tauri build --bundles nsis --no-sign --ci -- --offline --locked"
+    },
+    {
+      "Gate": "Native Windows Credential-backed database, backup, key-loss and restore integration",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T21:09:29.5530818Z",
+      "FinishedUtc": "2026-08-31T21:09:50.3254303Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\closeout-native-key-recovery.log",
+      "Command": "cargo test --manifest-path src-tauri/Cargo.toml --offline --locked --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --lib windows_credential_backed_database_and_backup_recover_after_key_loss -- --test-threads=1"
+    },
+    {
+      "Gate": "Final 51-test SQLCipher and WindowsSecretStore suite",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T21:09:56.7257326Z",
+      "FinishedUtc": "2026-08-31T21:10:58.4787039Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\closeout-sqlcipher-tests.log",
+      "Command": "cargo test --manifest-path src-tauri/Cargo.toml --offline --locked --no-default-features --features synthetic-only,sqlcipher,windows-secret-store"
+    },
+    {
+      "Gate": "Final SQLCipher and WindowsSecretStore Clippy",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T21:09:50.3341986Z",
+      "FinishedUtc": "2026-08-31T21:09:56.7117337Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\closeout-sqlcipher-clippy.log",
+      "Command": "cargo clippy --manifest-path src-tauri/Cargo.toml --offline --locked --no-default-features --features synthetic-only,sqlcipher,windows-secret-store --all-targets -- -D warnings"
+    },
+    {
+      "Gate": "Final source Tauri release and unsigned NSIS",
+      "ExitCode": 0,
+      "StartedUtc": "2026-08-31T21:13:37.5111962Z",
+      "FinishedUtc": "2026-08-31T21:15:06.5212063Z",
+      "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\closeout-tauri-nsis-build.log",
+      "Command": "pnpm tauri build --bundles nsis --no-sign --ci -- --offline --locked",
+      "InstallerExecuted": false
+    }
+  ],
+  "Counts": {
+    "FrontendTestsPassed": 4,
+    "DefaultRustTestsPassed": 35,
+    "SQLCipherRustTestsPassed": 51,
+    "DedicatedWindowsCredentialTestPassed": 1,
+    "NativeCredentialBackedDatabaseBackupRecoveryTestPassed": 1
+  },
+  "Argon2Release": {
+    "Gate": "Release Argon2id hash microbenchmark",
+    "ExitCode": 0,
+    "CompetingBuildsStopped": true,
+    "CPUPercentBefore": 15,
+    "MinimumMs": 92,
+    "MedianMs": 94,
+    "MaximumMs": 99,
+    "Measurements": [
+      {
+        "Run": 1,
+        "ExitCode": 0,
+        "StartedUtc": "2026-08-31T20:48:33.1219277Z",
+        "MemoryKiB": 65536,
+        "Iterations": 3,
+        "Parallelism": 1,
+        "ElapsedMs": 94,
+        "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\argon2-release-1.log"
+      },
+      {
+        "Run": 2,
+        "ExitCode": 0,
+        "StartedUtc": "2026-08-31T20:48:40.3941822Z",
+        "MemoryKiB": 65536,
+        "Iterations": 3,
+        "Parallelism": 1,
+        "ElapsedMs": 92,
+        "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\argon2-release-2.log"
+      },
+      {
+        "Run": 3,
+        "ExitCode": 0,
+        "StartedUtc": "2026-08-31T20:48:41.7677289Z",
+        "MemoryKiB": 65536,
+        "Iterations": 3,
+        "Parallelism": 1,
+        "ElapsedMs": 93,
+        "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\argon2-release-3.log"
+      },
+      {
+        "Run": 4,
+        "ExitCode": 0,
+        "StartedUtc": "2026-08-31T20:48:43.1587301Z",
+        "MemoryKiB": 65536,
+        "Iterations": 3,
+        "Parallelism": 1,
+        "ElapsedMs": 99,
+        "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\argon2-release-4.log"
+      },
+      {
+        "Run": 5,
+        "ExitCode": 0,
+        "StartedUtc": "2026-08-31T20:48:44.4801693Z",
+        "MemoryKiB": 65536,
+        "Iterations": 3,
+        "Parallelism": 1,
+        "ElapsedMs": 99,
+        "Log": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\evidence\\argon2-release-5.log"
+      }
+    ],
+    "Limitation": "Not a full login benchmark, loaded-host comparison, or minimum-hardware acceptance result"
+  },
+  "WindowsArtifacts": {
+    "Gate": "Final Windows artifact provenance",
+    "CapturedUtc": "2026-08-31T21:16:46.8246586Z",
+    "ExitCode": 0,
+    "SourceBuildEvidence": "closeout-tauri-nsis-build-result.json",
+    "Artifacts": [
+      {
+        "Path": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\autovaxx-release-target\\release\\autovaxx.exe",
+        "Bytes": 11698176,
+        "SHA256": "51a911a14c93a7101ae01e0acef3f874b6eff16ffbbe58d32dd22208ac2e08e9",
+        "SignatureStatus": "NotSigned",
+        "ProductVersion": "0.1.0"
+      },
+      {
+        "Path": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\autovaxx-release-target\\release\\bundle\\nsis\\AutoVaxx_0.1.0_x64-setup.exe",
+        "Bytes": 2775356,
+        "SHA256": "88d097798a46e42db1056a1e73d824e0ee027d60ca5b7a9f83c19b2026b15573",
+        "SignatureStatus": "NotSigned",
+        "ProductVersion": "0.1.0"
+      }
+    ],
+    "Features": "Default synthetic-only,dev-auth,sqlite-bundled; Tauri custom-protocol release",
+    "ProductionUseAuthorized": false,
+    "Signed": false,
+    "InstallerExecuted": false,
+    "InstallerDefaults": {
+      "InstallMode": "currentUser",
+      "RequestExecutionLevel": "user",
+      "WebView2Mode": "downloadBootstrapper",
+      "OfflineRuntimeEmbedded": false,
+      "AllowDowngrades": true,
+      "LicenseField": "empty"
+    },
+    "GeneratedCapabilityPermissions": [],
+    "Limitation": "Unsigned synthetic artifact. Static inventory is component evidence; installer not executed and no clean-machine/runtime authority, notices, retention, upgrade or production acceptance claim."
+  },
+  "NativeSmoke": {
+    "Gate": "Final native unsigned synthetic application smoke",
+    "StartedUtc": "2026-08-31T21:16:59.7110361Z",
+    "FinishedUtc": "2026-08-31T21:17:14.3483199Z",
+    "ExitCode": 0,
+    "WindowTitle": "AutoVaxx — Synthetic-only foundation",
+    "InitialPreexistingDataDirectories": false,
+    "ReusedOnlySamePassSyntheticFixture": true,
+    "Navigation": [
+      {
+        "Route": "Patients",
+        "Result": "PASS",
+        "ClinicalWorkflow": "Explicit Phase 1 placeholder"
+      },
+      {
+        "Route": "New vaccination",
+        "Result": "PASS",
+        "ClinicalWorkflow": "Explicit Phase 1 placeholder"
+      },
+      {
+        "Route": "Vaccination history",
+        "Result": "PASS",
+        "ClinicalWorkflow": "Explicit Phase 1 placeholder"
+      },
+      {
+        "Route": "Reports",
+        "Result": "PASS",
+        "ClinicalWorkflow": "Explicit Phase 1 placeholder"
+      },
+      {
+        "Route": "Settings",
+        "Result": "PASS",
+        "ClinicalWorkflow": "Explicit Phase 1 placeholder"
+      },
+      {
+        "Route": "Dashboard",
+        "Result": "PASS"
+      }
+    ],
+    "Language": "PASS: Spanish selection and translated synthetic banner/dashboard",
+    "ExecutableSHA256": "51a911a14c93a7101ae01e0acef3f874b6eff16ffbbe58d32dd22208ac2e08e9",
+    "ConnectionSnapshot": {
+      "Status": "OBSERVED",
+      "Count": 4,
+      "Connections": [
+        {
+          "State": 100,
+          "LocalAddress": "::",
+          "LocalPort": 58152,
+          "RemoteAddress": "::",
+          "RemotePort": 0,
+          "OwningProcess": 12160,
+          "StateName": "Bound"
+        },
+        {
+          "State": 100,
+          "LocalAddress": "::",
+          "LocalPort": 58151,
+          "RemoteAddress": "::",
+          "RemotePort": 0,
+          "OwningProcess": 12160,
+          "StateName": "Bound"
+        },
+        {
+          "State": 5,
+          "LocalAddress": "[local address redacted]",
+          "LocalPort": 58152,
+          "RemoteAddress": "2603:1036:303:3c0b::2",
+          "RemotePort": 443,
+          "OwningProcess": 12160,
+          "StateName": "Established"
+        },
+        {
+          "State": 5,
+          "LocalAddress": "[local address redacted]",
+          "LocalPort": 58151,
+          "RemoteAddress": "2603:1036:303:3c0b::2",
+          "RemotePort": 443,
+          "OwningProcess": 12160,
+          "StateName": "Established"
+        }
+      ],
+      "Scope": "One TCP snapshot only; not absence of past attempts or UDP"
+    },
+    "GracefulClose": true,
+    "Limitations": [
+      "Initial split-call launch succeeded but process was unavailable on follow-up; complete single-call pass recorded here",
+      "No clean-VM installer execution",
+      "No OS network disable",
+      "No full authentication or clinical workflow UI",
+      "No process-argument or environment inspection"
+    ],
+    "LanguagePatterns": [
+      "ValuePatternIdentifiers.Pattern",
+      "ExpandCollapsePatternIdentifiers.Pattern",
+      "ScrollItemPatternIdentifiers.Pattern"
+    ],
+    "OwnedProcesses": [
+      {
+        "ProcessId": 20552,
+        "ParentProcessId": 25656,
+        "Name": "autovaxx.exe"
+      },
+      {
+        "ProcessId": 23672,
+        "ParentProcessId": 20552,
+        "Name": "conhost.exe"
+      },
+      {
+        "ProcessId": 12160,
+        "ParentProcessId": 20552,
+        "Name": "msedgewebview2.exe"
+      },
+      {
+        "ProcessId": 23872,
+        "ParentProcessId": 12160,
+        "Name": "msedgewebview2.exe"
+      },
+      {
+        "ProcessId": 10944,
+        "ParentProcessId": 12160,
+        "Name": "msedgewebview2.exe"
+      },
+      {
+        "ProcessId": 26060,
+        "ParentProcessId": 12160,
+        "Name": "msedgewebview2.exe"
+      },
+      {
+        "ProcessId": 26412,
+        "ParentProcessId": 12160,
+        "Name": "msedgewebview2.exe"
+      },
+      {
+        "ProcessId": 25904,
+        "ParentProcessId": 12160,
+        "Name": "msedgewebview2.exe"
+      }
+    ],
+    "RemainingApplicationFiles": [
+      {
+        "Directory": "C:\\Users\\janza\\AppData\\Roaming\\com.cuadradozayas.autovaxx",
+        "Files": [
+          {
+            "Name": "autovaxx-synthetic.sqlite",
+            "Length": 4096,
+            "Attributes": 32
+          },
+          {
+            "Name": "autovaxx-synthetic.sqlite-shm",
+            "Length": 32768,
+            "Attributes": 32
+          },
+          {
+            "Name": "autovaxx-synthetic.sqlite-wal",
+            "Length": 630392,
+            "Attributes": 32
+          }
+        ],
+        "NestedDirectories": [
+          null
+        ]
+      },
+      {
+        "Directory": "C:\\Users\\janza\\AppData\\Local\\com.cuadradozayas.autovaxx",
+        "Files": [],
+        "NestedDirectories": [
+          "EBWebView"
+        ]
+      }
+    ],
+    "TransferRedaction": "Only local network-address values redacted; scoped original remains on laptop.",
+    "RawScopedRecordTransferred": false,
+    "DiagnosticOriginSummaryTransferred": true
+  },
+  "RuntimeEgressFinding": {
+    "Status": "OPEN_BLOCKER",
+    "ObservedExternalEstablishedHTTPSConnections": 2,
+    "Process": "AutoVaxx-owned msedgewebview2.exe",
+    "DestinationIPv6": "2603:1036:303:3c29::2",
+    "DestinationPort": 443,
+    "PurposeAndPayload": "NOT_CAPTURED",
+    "NoRealPatientInput": true,
+    "NoEgressClaimEstablished": false,
+    "OSNetworkDisabledTestRun": false,
+    "NextAction": "Threat/architecture review of WebView2 APIs and deployment egress enforcement, followed by isolated Windows OS-offline capture; do not apply a broad borrowed-host policy as a shortcut.",
+    "References": [
+      {
+        "URL": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy",
+        "Verified": "2026-08-31"
+      },
+      {
+        "URL": "https://v2.tauri.app/security/csp/",
+        "Verified": "2026-08-31"
+      },
+      {
+        "URL": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-webview-policies#experimentationandconfigurationservicecontrol",
+        "Verified": "2026-08-31"
+      }
+    ],
+    "DiagnosticRun": {
+      "StartedUtc": "2026-08-31T21:07:45.6700000Z",
+      "FinishedUtc": "2026-08-31T21:08:06.3190000Z",
+      "FreshProfile": true,
+      "CaptureMode": "Default",
+      "RequestStartOrigins": [
+        {
+          "Scheme": "https",
+          "Host": "config.edge.skype.com",
+          "Port": 443,
+          "Count": 2
+        }
+      ],
+      "LocalOrigin": "http://tauri.localhost:80",
+      "RawTraceBytes": 462861,
+      "RawTraceSHA256": "518785137d73535f6cfc3ae0eecac67f306d878c6aeb18e33cc126b618654093",
+      "RawTraceTransferred": false,
+      "ProductionConfigurationChanged": false,
+      "Interpretation": "Endpoint metadata from a separate diagnostic run only; no payload-content or all-egress claim."
+    },
+    "PolicyReadOnlyCheck": {
+      "HKCUPathExists": false,
+      "HKLMPathExists": false,
+      "Value": "ExperimentationAndConfigurationServiceControl",
+      "Changed": false,
+      "Caution": "RestrictedMode is documented but not recommended by Microsoft and was not treated as an app-scoped production fix."
+    }
+  },
+  "SecurityChecks": {
+    "RustSec": {
+      "Tool": "cargo-audit 0.22.2",
+      "ExitCode": 0,
+      "Vulnerabilities": 0,
+      "Warnings": 17,
+      "DatabaseCommit": "ba9db2a77a6a0fe93bc63a3d9b730e08b145aff5",
+      "AdvisoriesLoaded": 1233,
+      "NoFetch": true,
+      "YankedLookupRun": false,
+      "Evidence": "cargo-audit.json"
+    },
+    "NpmAudit": {
+      "Status": "PASS",
+      "Tool": "pnpm 9.0.4 audit --json",
+      "ExitCode": 0,
+      "Registry": "https://registry.npmjs.org/",
+      "OwnerApprovedDependencyInventoryDisclosure": true,
+      "SourceOrPatientDataUploaded": false,
+      "Vulnerabilities": {
+        "Info": 0,
+        "Low": 0,
+        "Moderate": 0,
+        "High": 0,
+        "Critical": 0,
+        "Total": 0
+      },
+      "AuditMetadata": {
+        "Dependencies": 276,
+        "DevDependencies": 0,
+        "OptionalDependencies": 0,
+        "TotalDependencies": 276
+      },
+      "Advisories": 0,
+      "Actions": 0,
+      "Evidence": "closeout-pnpm-audit-result.json and closeout-pnpm-audit.json"
+    },
+    "Gitleaks": {
+      "Version": "8.30.1",
+      "HistoryCommitsAvailable": 1,
+      "HistoryAndChangedFilesPassed": true,
+      "FullUpstreamHistoryScanned": false,
+      "FinalPackageResult": "See package scan evidence and sidecar verification."
+    },
+    "GeneratedTauriPermissions": []
+  },
+  "Warnings": [
+    "Bundled OpenSSL debug symbols ossl_static.pdb missing: LNK4099, no suppression added.",
+    "Expected SQLCipher wrong-key negative tests emitted HMAC/decryption errors; suite passed.",
+    "Installer unsigned; currentUser mode, downloadBootstrapper WebView2 dependency, downgrade allowed, empty license field.",
+    "License metadata gate is not full notice/distribution or SBOM review."
+  ],
+  "Acceptance": {
+    "WindowsProtocolClosed": false,
+    "Phase1ExitApproved": false,
+    "Phase2Authorized": false,
+    "RealPHIAuthorized": false,
+    "InstallerExecuted": false,
+    "Remaining": "Clean Windows VM, second account/device, authenticated/clinical workflow implementation, migration/prior-schema fixtures, OS-offline/egress control, disposable crash/disk-full environment, approved retention/uninstall policy and signed prior upgrade fixture.",
+    "NoUsableCleanVmIdentified": true,
+    "NativeCredentialBackedRecoveryComponentPassed": true
+  },
+  "SEC008": {
+    "CapturedUtc": "2026-08-31T20:55:49.2244282Z",
+    "SEC008Selected": false,
+    "FullSyncExclusionVerified": false,
+    "IndependentMacAuthorProvenanceVerified": false,
+    "HarnessInvoked": false,
+    "ReadOnlyInventory": [
+      {
+        "Directory": "C:\\SEC008-Review",
+        "Files": [
+          {
+            "Name": "Child.ps1.review.txt",
+            "Bytes": 2615,
+            "Attributes": "Archive",
+            "SHA256": "6388ddd24cc18367f30bdbe4e3593555c32cf4cfda1592108cba0b5fff47fe76"
+          },
+          {
+            "Name": "Common.ps1.review.txt",
+            "Bytes": 12170,
+            "Attributes": "Archive",
+            "SHA256": "84abf6c3dcca9ec684bd4ccd24769443283a088b8db9e52113c88d389b03743b"
+          },
+          {
+            "Name": "ManualCleanup.ps1.review.txt",
+            "Bytes": 4246,
+            "Attributes": "Archive",
+            "SHA256": "d1f23b293aa0c03e61feaf9078ff94d05022228985ef284eb114f9349ba9deb2"
+          },
+          {
+            "Name": "Parent.ps1.review.txt",
+            "Bytes": 12349,
+            "Attributes": "Archive",
+            "SHA256": "d11f87c42733b6edf17c7d10dd754137b08213f382eb3c2deeb7936e598f1c0c"
+          },
+          {
+            "Name": "README.md",
+            "Bytes": 44300,
+            "Attributes": "Archive",
+            "SHA256": "1db1693a1daa8429c4147e5fd03e98fe909a5a1e402476408a1d5d082e8127d5"
+          },
+          {
+            "Name": "Stage.ps1.review.txt",
+            "Bytes": 9932,
+            "Attributes": "Archive",
+            "SHA256": "90b11fd2522592331a36cca93bd3688cf573b4de49c5f3dcb5fa532caa407624"
+          },
+          {
+            "Name": "STAGING_LEDGER.review.json",
+            "Bytes": 1457,
+            "Attributes": "Archive",
+            "SHA256": "78b7ed3a4394a94f92d093ea6e3ae4960bedda824cf578c2421c84ac8ce149df"
+          },
+          {
+            "Name": "Support.cs.review.txt",
+            "Bytes": 10208,
+            "Attributes": "Archive",
+            "SHA256": "fd9d997142a59ad555ce633d9e546b04a2cedfe37882bd65c993c5b4ec4d1e31"
+          }
+        ]
+      },
+      {
+        "Directory": "C:\\SEC008-Lab",
+        "Files": [
+          {
+            "Name": "SEC008.evidence-selftest.txt",
+            "Bytes": 56,
+            "Attributes": "Archive",
+            "SHA256": "8fb406978d05149b7b5b51074abc6822ed47623de210c0e29af54b1f28ddf3c9"
+          },
+          {
+            "Name": "SEC008.Support.compilecheck.dll",
+            "Bytes": 11776,
+            "Attributes": "Archive",
+            "SHA256": "9fe825c16058e92b7384294f23571741cbce4ac546972fd4b9219476524a7382"
+          },
+          {
+            "Name": "Support.compilecheck.cs",
+            "Bytes": 10211,
+            "Attributes": "Archive",
+            "SHA256": "e68159f1be37e34794c8994f2dee4c92dbb5d3ce7d97c5fd50aaf065c7ff2afc"
+          }
+        ]
+      }
+    ],
+    "OriginalReviewZip": {
+      "Path": "C:\\Users\\janza\\Downloads\\9e60333b-cc62-42b1-a969-6773681a7d1d.zip",
+      "Bytes": 35152,
+      "SHA256": "d2733d2207b600f6d46f5be95bc1551ab29839a53cdb1ba72373e9e2f0d8e859"
+    },
+    "RepositoryCandidateExists": false,
+    "EarlierHelperOnlyResults": {
+      "ManagedChecks": 6,
+      "EvidenceChildExitChecks": 15,
+      "TimeoutLateExitChecks": 13,
+      "ConsolidatedFaultChecks": 23,
+      "Status": "Reported in earlier task history; raw historical logs not present in this build evidence directory",
+      "SigningOrTPMTested": false
+    }
+  },
+  "HandoffExclusions": [
+    "Patient/application databases and WAL files",
+    "Credential contents and recovery secrets",
+    "WebView2 user-data/cache",
+    "node_modules and Cargo target/cache",
+    "Installed developer tools",
+    "Activated SEC-008 proposals",
+    "Local network-address values in transferred smoke evidence",
+    "Raw WebView2 diagnostic NetLog, queries, headers, bodies and diagnostic profile"
+  ],
+  "BorrowedLaptopCleanup": {
+    "AutomaticCleanupPerformed": false,
+    "OwnerLenderReviewNeeded": true,
+    "AddedRoots": [
+      "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools",
+      "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools",
+      "C:\\Users\\janza\\AppData\\Local\\tauri\\NSIS",
+      "C:\\Users\\janza\\AppData\\Roaming\\com.cuadradozayas.autovaxx",
+      "C:\\Users\\janza\\AppData\\Local\\com.cuadradozayas.autovaxx"
+    ],
+    "SEC008FoldersLeftIntact": true,
+    "PrivateDiagnosticRoot": "C:\\Users\\janza\\AppData\\Local\\AutoVaxx-DevTools\\closeout-private"
+  }
+}

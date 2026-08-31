@@ -2,6 +2,8 @@
 
 **Status:** Unexecuted protocol. No row below is pre-marked pass.
 
+Developer-host component evidence is recorded in [the 2026-08-31 Windows handoff](WINDOWS_BUILD_HANDOFF.md). It does not satisfy all protocol preconditions or close these rows. That smoke test observed external HTTPS connections in an application-owned WebView2 process; runtime egress denial remains an open acceptance blocker. A later diagnostic run identified `config.edge.skype.com` requests. Native credential-backed encrypted database, backup, key-loss and restore integration now passes as component evidence; it does not replace clean-workstation, second-account, authenticated workflow or OS-offline preconditions.
+
 **Safety:** Use only conspicuously synthetic patients and sentinel `SYNTHETIC-PHI-EQUIVALENT-SENTINEL`. Never use real PHI. Preserve command output, screenshots, hashes, and artifact inventories in an access-controlled evidence package that contains no secrets.
 
 ## Environment record
