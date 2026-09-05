@@ -211,6 +211,11 @@ testable without a model runtime.
 
 Each step is a separate implementation plan and PR. None is authorized by this ADR.
 
+The [Synthetic Windows Worker Supervisor contract](../SYNTHETIC_WORKER_IMPLEMENTATION_CONTRACT.md)
+specifies the proposed first experiment, its fixed protocol, native test matrix, evidence, and open
+implementation approval. It also requires probing container-local storage rather than assuming that
+AppContainer configuration satisfies the no-writable-storage objective.
+
 ## Primary sources
 
 - [Ollama local API authentication](https://docs.ollama.com/api/authentication)

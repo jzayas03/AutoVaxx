@@ -67,6 +67,8 @@ these gates remain open:
   multilingual, encoded, and split-line attacks plus benign imperative controls remain future work.
 - **Next action:** Implement an adversarial synthetic worker and prove the ADR-0010 Windows supervisor
   boundary before selecting or wiring a product inference runtime.
+  The [draft implementation contract](SYNTHETIC_WORKER_IMPLEMENTATION_CONTRACT.md) defines that
+  standalone experiment and its approval and acceptance gates.
 
 ## PREIS Boundary
 
