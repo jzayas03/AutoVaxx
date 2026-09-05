@@ -79,12 +79,19 @@ This choice makes the runtime less flexible by design: new nodes or loops requir
 
 ### Cancellation ownership decision
 
-Cancellation follows the ownership boundary:
+[ADR-0010](adr/0010-use-a-private-ipc-owned-worker-for-patient-bearing-local-ai.md) replaces the
+earlier dual-mode patient-bearing topology. Ollama remains an ephemeral synthetic-evaluation service.
+Product inference requires an app-owned worker whose complete process tree is placed in a no-breakaway
+Windows Job Object with explicit memory/process limits and `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` before
+the worker runs. A Rust monotonic timer first requests cooperative cancellation; at the absolute
+deadline Rust terminates the job and verifies complete exit before cleanup and manual fallback.
+[Microsoft documents Job Object process-tree termination and resource limits](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
 
-- For a separately provisioned external Ollama service, AutoVaxx enforces its own wall-clock deadline, aborts the in-flight request, quarantines the provider from further use in the current assist session, and returns to manual documentation. It does not terminate a facility-managed service.
-- For any future app-owned child process, AutoVaxx places the entire process tree in a Windows Job Object with memory limits and `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. A Rust wall-clock timer first requests cooperative cancellation; when the absolute deadline expires, AutoVaxx terminates the job and verifies process exit before cleanup and manual fallback. [Microsoft documents Job Object process-tree termination and resource limits](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
-
-This dual-mode policy preserves process ownership while making the absolute deadline enforceable. Failure to terminate an app-owned child quarantines that provider and prevents an automatic restart during the active patient session.
+The Job Object owns lifecycle and resource limits; it is not the access-control sandbox. The worker
+also requires AppContainer isolation with no network capability and only approved read-only runtime
+and model access. Failure to apply or verify either control is `POLICY_DENIED`. Failure to prove exit
+is `PROCESS_TERMINATION_FAILED`, disables assistance until a clean restart, and prevents automatic
+restart during the active patient session.
 
 ## 4. Existing mechanisms to reuse
 
@@ -161,17 +168,21 @@ Persist the template identifier/version and cryptographic hash, not the rendered
 The current `LocalAiProvider::propose_fields(&str)` placeholder is intentionally insufficient for implementation. The Phase 2 contract should be designed from the graph and include:
 
 - health/readiness and schema-constrained-output capability;
-- provider, endpoint, approved model digest, template hash, schema, and decoding provenance;
+- provider, owned-worker package identity, approved model digest, template hash, schema, and decoding provenance;
 - bounded input and output types with an allowed field set;
 - source spans and uncertainty indicators;
 - absolute deadline and cooperative cancellation;
 - typed `UNAVAILABLE`, `TIMEOUT`, `HARD_TERMINATED`, `PROCESS_TERMINATION_FAILED`, `MALFORMED_OUTPUT`, `UNSUPPORTED_CAPABILITY`, `OUT_OF_MEMORY`, provider-runtime `DISK_FULL`, `RESOURCE_LIMIT`, `MODEL_DIGEST_MISMATCH`, `POLICY_DENIED`, and `CANCELLED` errors;
-- loopback identity validation on every patient-bearing request, with redirects and proxies rejected;
+- private inherited-pipe transport with no listening socket, network capability, proxy configuration, or browser-callable endpoint;
 - no domain repositories, application commands, filesystem tools, registry clients, credentials, or arbitrary network access.
 
-The approved evaluation manifest pins the provider version, model name, and content digest. At provider readiness and before the first patient-bearing assist session, the adapter compares the runtime-reported digest with the approved digest and fails with `MODEL_DIGEST_MISMATCH` if they differ. Ollama exposes a model digest through its local model-listing API; AutoVaxx uses the digest rather than scanning an externally managed multi-gigabyte blob store. [Ollama model-listing API](https://docs.ollama.com/api/tags)
-
-If a future app-owned runtime packages model files directly, provisioning verifies the full artifact checksum/signature and startup re-verifies it under the approved supply-chain policy. Cached verification is acceptable only when bound to immutable artifact identity and invalidated by any metadata or content change.
+The approved manifest pins the worker/runtime version, model name and full content digest, license,
+prompt template, schema, and decoding policy. Provisioning verifies worker and model signatures/hashes;
+startup re-verifies them before the first patient-bearing assist session and fails with
+`MODEL_DIGEST_MISMATCH` or `POLICY_DENIED` on drift. Cached verification is acceptable only when bound
+to immutable artifact identity and invalidated by any metadata or content change. The developer
+Ollama harness may probe Ollama's model-listing API, but that externally managed blob-store identity is
+not the product supply-chain boundary.
 
 ## 9. Data retention and audit
 
@@ -206,7 +217,7 @@ Each run records at least:
 - accepted-as-is rate, accepted-with-correction rate, and correction actions per accepted proposal;
 - time-to-fallback from failure detection until the manual form is usable, reported at median and 95th percentile;
 - median and 95th-percentile latency on representative hardware;
-- zero unauthorized mutations, workflow transitions, exports, transmissions, and non-loopback requests;
+- zero unauthorized mutations, workflow transitions, exports, transmissions, AI network attempts, and inference listeners;
 - zero synthetic PHI-like sentinels in logs, crash output, temp remnants, support bundles, and process arguments.
 
 Safety gates are absolute. A candidate with an authority, locality, retention, audit, or cleanup violation cannot trade that failure for better extraction accuracy.
@@ -218,11 +229,11 @@ Correction and fallback metrics measure utility without creating patient-bearing
 1. Confirm Phase 1 exit evidence and obtain explicit product-owner authorization for Phase 2.
 2. Approve the assist data flow and threat-model delta, including crash cleanup and provider process boundaries.
 3. Create the synthetic evaluation corpus and baseline the unavailable fake before changing prompts or models.
-4. Define typed assist states, transitions, terminal outcomes, dual-mode cancellation, loop budgets, request/response envelopes, model-digest policy, and provider/persistence error separation in Rust.
-5. Implement a fake provider and table-driven graph tests before the Ollama adapter.
+4. Define typed assist states, transitions, terminal outcomes, owned-worker cancellation/termination, loop budgets, request/response envelopes, model-digest policy, and provider/persistence error separation in Rust.
+5. Implement a fake provider and table-driven graph tests before any native inference runtime.
 6. Add the application service and narrow Tauri commands; prove authorization bypasses and direct state changes fail.
 7. Add RAM/pipe-first handling, encrypted temporary-artifact cleanup, and minimal provenance migrations; verify the real encrypted SQLite path, audit atomicity, restart, and restore behavior.
-8. Implement the loopback-only Ollama adapter with digest pinning and external-service abort/quarantine, then the human-review UI and manual fallback. Any app-owned runtime remains a separate packaging decision and must use a tested Windows Job Object termination path.
+8. Implement and verify the adversarial owned-worker supervisor from ADR-0010 before selecting a native inference runtime; then add the human-review UI and manual fallback. Ollama remains synthetic-evaluation-only.
 9. Run the full synthetic eval and offline/security workflow, repair failures, and record before/after evidence.
 10. Update requirements, architecture, data model, security, roadmap, migrations, and acceptance evidence together before requesting Phase 2 exit review.
 
@@ -231,7 +242,7 @@ Correction and fallback metrics measure utility without creating patient-bearing
 - Generic graph, agent, plugin, rules-DSL, broker, background-job, or microservice frameworks.
 - Autonomous clinical interpretation, recommendation, forecasting, contraindication/precaution evaluation, or eligibility clearance.
 - AI-driven workflow changes, administration confirmation, finalization, correction/void, export authorization, PREIS mapping decisions, transmission, or acknowledgement handling.
-- Cloud AI/speech, remote provider endpoints, cloud fallback, app-managed model downloads, or patient-bearing telemetry.
+- Cloud AI/speech, remote or externally provisioned patient-bearing provider endpoints, cloud fallback, automatic model downloads, or patient-bearing telemetry.
 - Raw prompt/response/audio retention, patient-specific memory, self-improving production loops, or training on patient encounters.
 - Production or real-PHI use before the separate clinical, privacy, security, operational, encryption, backup/restore, and Windows acceptance gates pass.
 
@@ -239,7 +250,7 @@ Correction and fallback metrics measure utility without creating patient-bearing
 
 - Every graph state and edge is explicit, typed, authorized where applicable, and covered by table-driven tests.
 - Every loop has a fixed attempt budget, absolute deadline, cancellation path, and tested terminal fallback.
-- External-provider abort/quarantine and app-owned process-tree termination are separately tested; a child process that ignores cooperative cancellation cannot survive the hard deadline unnoticed.
+- App-owned sandbox application, private-handle IPC, process-tree termination, and failed-termination quarantine are tested; a child process that ignores cooperative cancellation cannot survive the hard deadline unnoticed.
 - Provider `OUT_OF_MEMORY`/`DISK_FULL` bypass retry and repair, while clinical `PERSISTENCE_FULL` blocks mutation and cannot be reported as successful fallback.
 - The runtime model digest, prompt-template hash, schema version, and decoding version match the approved evaluation manifest and applied-proposal provenance.
 - Every accepted proposal uses expected revision and one atomic draft-revision-plus-audit transaction.
@@ -247,5 +258,5 @@ Correction and fallback metrics measure utility without creating patient-bearing
 - Restart, lock, logout, timeout, cancellation, disk-full, malformed-output, unavailable-provider, and cleanup paths are exercised on the real application path.
 - The approved synthetic evaluation suite shows before/after results with no safety-gate violation or unexplained required-metric regression.
 - Time-to-fallback and correction-friction targets are approved from synthetic/usability baselines and pass at the required median and 95th percentiles.
-- No PHI or synthetic PHI-like sentinel appears in prohibited outputs, and no patient-bearing request reaches a non-loopback destination.
+- No PHI or synthetic PHI-like sentinel appears in prohibited outputs, and the patient-bearing worker has no network capability or listening endpoint.
 - The product continues to state explicitly that AutoVaxx does not evaluate clinical eligibility.

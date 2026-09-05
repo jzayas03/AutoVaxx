@@ -30,7 +30,7 @@
 |                         +-> SQLite      |
 |                         +-> OS keychain |
 |                         +-> local files |
-|                         +-> Ollama      |
+|                         +-> owned AI worker |
 |                         +-> whisper.cpp |
 +----------------------------------------+
 
@@ -53,11 +53,11 @@ No cloud AI. No background PHI synchronization. Core workflow remains local.
 | corrections          | clock/identity       | registry readiness   |
 +----------------------+----------------------+----------------------+
 | Adapters                                                          |
-| SQLite | OS keychain | Ollama | whisper.cpp | files | PREIS/HL7    |
+| SQLite | OS keychain | AI worker | whisper.cpp | files | PREIS/HL7  |
 +-------------------------------------------------------------------+
 ```
 
-Dependency direction points inward: adapters depend on ports and domain types. The domain does not import Tauri, SQLite, Ollama, whisper.cpp, HL7, or PREIS-specific code.
+Dependency direction points inward: adapters depend on ports and domain types. The domain does not import Tauri, SQLite, a model runtime, whisper.cpp, HL7, or PREIS-specific code.
 
 ### React frontend
 
@@ -138,13 +138,13 @@ Microphone / typed note
 
 The provider contracts return proposals, not domain entities. Provider output is untrusted input. It must pass schema, length, code-set, and provenance checks. AI cannot call application commands and cannot set workflow state.
 
-The Rust application layer owns an explicit, bounded assist-session graph separate from the clinical encounter state machine. It enforces loop budgets, an absolute wall-clock deadline, typed terminal outcomes, cleanup, and manual fallback. A separately provisioned provider receives cooperative request abort plus quarantine; AutoVaxx does not terminate a facility-managed service. Any future app-owned child runtime uses a Windows Job Object and hard process-tree termination after cooperative cancellation exceeds the deadline. Provider `OUT_OF_MEMORY` or isolated provider-runtime `DISK_FULL` bypasses retry/repair; unknown/shared-volume exhaustion or clinical `PERSISTENCE_FULL` remains a blocking integrity failure. See [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md).
+The Rust application layer owns an explicit, bounded assist-session graph separate from the clinical encounter state machine. It enforces loop budgets, an absolute wall-clock deadline, typed terminal outcomes, cleanup, and manual fallback. Patient-bearing inference requires an app-owned, Windows-sandboxed worker over bounded inherited pipes with no listening socket. Rust creates the worker suspended with AppContainer security attributes, assigns it to a no-breakaway Job Object before resuming it, and verifies the complete process tree exits after cooperative or hard cancellation. Provider `OUT_OF_MEMORY` or isolated provider-runtime `DISK_FULL` bypasses retry/repair; unknown/shared-volume exhaustion or clinical `PERSISTENCE_FULL` remains a blocking integrity failure. See [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md) and [ADR-0010](adr/0010-use-a-private-ipc-owned-worker-for-patient-bearing-local-ai.md).
 
-Ollama initially runs on a loopback endpoint; its documented local API defaults to `http://localhost:11434/api`. The adapter must enforce loopback resolution for PHI-bearing requests rather than trusting a configurable URL. See [Ollama API documentation](https://docs.ollama.com/api/introduction).
+Ollama remains an ephemeral synthetic-evaluation service. Its local API requires no authentication and Ollama permits local-address browser origins by default, so loopback is not the patient-bearing product boundary. See [Ollama authentication](https://docs.ollama.com/api/authentication) and [Ollama origin configuration](https://docs.ollama.com/faq).
 
-The adapter compares Ollama's reported model digest with the approved synthetic-evaluation manifest at readiness and before the first patient-bearing assist session. A mismatch is policy denied. The applied-proposal provenance records the approved model digest and prompt-template cryptographic hash without retaining the rendered prompt.
+The product adapter verifies the signed/hashed worker and model package at readiness and before the first patient-bearing assist session. A mismatch is policy denied. The applied-proposal provenance records the approved model digest and prompt-template cryptographic hash without retaining the rendered prompt.
 
-The future llama.cpp adapter can use its loopback server interface without changing the domain contract. See [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md).
+A minimal llama.cpp-based worker is the first implementation candidate because grammar-constrained local inference does not require exposing `llama-server`. The runtime remains replaceable behind the provider contract and requires a separate packaging, licensing, GPU, sandbox, and performance decision. See [llama.cpp CLI and grammar support](https://github.com/ggml-org/llama.cpp).
 
 Speech starts behind a whisper.cpp adapter. The upstream example server accepts local inference requests but warns that file uploads and format conversion require sandboxing and validation. AutoVaxx should prefer a tightly controlled child process or in-process binding over a broadly reachable server. See [whisper.cpp server documentation](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md).
 
@@ -213,7 +213,7 @@ No registry payload is built by an LLM. Mapping is deterministic and fixture-tes
 
 ## 9. Offline and process model
 
-The Tauri application and SQLite database are sufficient for the core deterministic workflow. Ollama and whisper.cpp are optional local dependencies whose absence degrades assistance, not documentation or safety.
+The Tauri application and SQLite database are sufficient for the core deterministic workflow. The owned AI worker and whisper.cpp are optional local dependencies whose absence degrades assistance, not documentation or safety. Ollama is a synthetic developer-evaluation dependency, not a product runtime.
 
 Assistance failure must release control predictably. Synthetic evaluation measures median and 95th-percentile time-to-fallback, accepted-as-is rate, accepted-with-correction rate, and correction actions per accepted proposal; these metrics use synthetic/usability evidence by default rather than patient-bearing telemetry.
 
@@ -256,7 +256,7 @@ Every decision below is proposed until implementation approval.
 | ADR-003 | **SQLite as local source of truth, designed for SQLCipher-compatible encryption.** Fits single-computer offline use and transactional audit writes. | Embedded key-value store; local PostgreSQL; unencrypted SQLite plus disk encryption. | Packaging and extension compatibility; key loss; backups may leak plaintext; SQLCipher choice needs validation. | Repository boundary permits server database later; export/import and revision IDs support migration. |
 | ADR-004 | **Rust owns authorization, state transitions, rules, persistence, and external I/O.** Prevents UI bypass and centralizes trusted behavior. | Put business logic in React; direct SQLite frontend plugin; split logic across both. | Rust commands may become a large ad hoc API; serialization mismatches. | Version typed command contracts; expose the same use cases through a future authenticated service. |
 | ADR-005 | **Deterministic, versioned validation engine with documentation-only rules first.** Reproducibility is mandatory; the first implementation checks screening completeness, documentation, temporal/product facts, and registry readiness without interpreting eligibility. | LLM decisions; hard-coded UI checks; immediate clinical eligibility rules; third-party online CDS. | Users may mistake completeness for clinical clearance unless unsupported scope is prominent. | Add only separately approved/versioned clinical rule packages; later adopt a verified standards-based representation behind the same port if justified. |
-| ADR-006 | **Local AI provider abstraction with Ollama first.** Reduces typing while keeping PHI local and enables later llama.cpp support. | No AI; cloud AI; embed one model runtime directly. | Loopback services may be misconfigured; model output is unreliable; resource usage; provider API drift. | Add a llama.cpp adapter or in-process provider; keep proposal schema and safety boundary stable. |
+| ADR-006 | **Local AI provider abstraction with a private-IPC owned worker for patient-bearing use.** Ollama remains synthetic-evaluation-only; Rust owns product worker authority, lifetime, and validation under [ADR-0010](adr/0010-use-a-private-ipc-owned-worker-for-patient-bearing-local-ai.md). | Separately provisioned Ollama; app-owned HTTP server; in-process inference; no AI. | Native sandbox/GPU compatibility, packaging and patch ownership, model unreliability, memory pressure, and cold-start latency. | Keep the provider contract stable; consider an authenticated facility inference service or reviewed in-process runtime only through a new ADR. |
 | ADR-007 | **Speech provider abstraction with whisper.cpp first.** Local transcription supports hands-busy workflows without cloud disclosure. | OS speech API; cloud transcription; no speech. | Raw audio is highly sensitive; temp-file leakage; bilingual accuracy; process hardening. | Replace child-process adapter with reviewed native binding or another offline engine. |
 | ADR-008 | **Append-only finalized revisions plus atomic audit events.** Prevents silent history loss and supports corrections/accountability. | In-place updates with timestamps; event sourcing for everything; database triggers alone. | Storage growth; more complex queries; privileged local tampering remains a threat. | Revisions can synchronize as immutable events; add externally anchored integrity checkpoints if threat model requires. |
 | ADR-009 | **Explicit outflow authorization and adapter-based integration.** Makes every PHI disclosure visible and keeps PREIS assumptions isolated. | Automatic background sync; manual re-entry; embed PREIS fields throughout domain. | Users may defer submissions; payload files can leak; retries can duplicate. | Add policy-approved scheduled transmission only after explicit configuration, idempotency, and current PREIS certification. |

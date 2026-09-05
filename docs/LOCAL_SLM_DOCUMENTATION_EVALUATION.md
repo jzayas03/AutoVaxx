@@ -60,11 +60,13 @@ these gates remain open:
   `qwen3:4b-instruct-2507-q4_K_M` artifact. Its exact digest and license-text digest are pinned, but
   `distribution_license_approved` remains false until AutoVaxx explicitly accepts the artifact.
 - **Product isolation:** Peak unified-memory pressure, forced-OOM behavior, browser-origin isolation,
-  and an owned-worker kill path remain unverified. A developer-managed Ollama service is not an
-  acceptable product security boundary.
+  and the owned-worker acceptance matrix remain unverified. A developer-managed Ollama service is not
+  an acceptable product security boundary. [ADR-0010](adr/0010-use-a-private-ipc-owned-worker-for-patient-bearing-local-ai.md)
+  requires a private-IPC, app-owned Windows worker before patient-bearing product wiring.
 - **Adversarial breadth:** The six malicious fixtures cover direct instruction families. Paraphrased,
   multilingual, encoded, and split-line attacks plus benign imperative controls remain future work.
-- **Next action:** Specify and test the Rust-owned Windows worker boundary before any product wiring.
+- **Next action:** Implement an adversarial synthetic worker and prove the ADR-0010 Windows supervisor
+  boundary before selecting or wiring a product inference runtime.
 
 ## PREIS Boundary
 
@@ -82,8 +84,9 @@ transmission capability.
 
 **Security note:** Loopback alone is not production isolation. Ollama explicitly documents in its
 [authentication documentation](https://docs.ollama.com/api/authentication) that its local API requires
-no authentication. The temporary service was stopped after testing. Product integration still
-requires OS process isolation, browser-origin/CORS tests, and an owned-worker termination path.
+no authentication. The temporary service was stopped after testing. ADR-0010 now specifies the
+required OS process isolation, browser-origin denial, private IPC, and owned-worker termination path;
+that boundary remains unimplemented and unverified.
 
 ## Implemented Files
 
