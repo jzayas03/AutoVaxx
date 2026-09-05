@@ -7,3 +7,8 @@ docs/
 src-tauri/gen/
 src-tauri/icons/
 .gstack/
+tools/doc-eval-harness/.mypy_cache/
+tools/doc-eval-harness/.pytest_cache/
+tools/doc-eval-harness/.ruff_cache/
+tools/doc-eval-harness/.venv/
+tools/doc-eval-harness/dist/

@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "english",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The synthetic clinic opens at 08:00 on weekdays."
+    }
+  ]
+}
