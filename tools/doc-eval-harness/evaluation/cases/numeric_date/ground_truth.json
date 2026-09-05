@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "numeric_date",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The synthetic archive review date is 2030-04-15."
+    }
+  ]
+}

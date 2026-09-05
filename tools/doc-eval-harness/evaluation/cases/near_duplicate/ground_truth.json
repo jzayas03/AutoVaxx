@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "category": "near_duplicate",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The fictional north label reads Maple."
+    },
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The fictional south label reads Maples."
+    }
+  ]
+}

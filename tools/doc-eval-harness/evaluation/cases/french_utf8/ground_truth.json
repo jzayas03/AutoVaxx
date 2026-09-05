@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "french_utf8",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "La réunion documentaire fictive commence à neuf heures."
+    }
+  ]
+}

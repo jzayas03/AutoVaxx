@@ -18,6 +18,15 @@
       "expected_license_sha256": "6de58700b9be15ef328dc638041e16c5aee6c576ba971b64200ccacfc0a60b5f",
       "license_id": "llama3.2",
       "distribution_license_approved": false
+    },
+    {
+      "name": "qwen3-autovaxx:4b-instruct-2507-q4-k-m",
+      "digest": "0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0",
+      "expected_format": "gguf",
+      "expected_parameter_size": "4.0B",
+      "expected_license_sha256": "d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+      "license_id": "Apache-2.0",
+      "distribution_license_approved": false
     }
   ]
 }

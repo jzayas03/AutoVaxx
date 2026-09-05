@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "category": "multiple_findings",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The synthetic east room contains four empty chairs."
+    },
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The synthetic west room contains six empty chairs."
+    }
+  ]
+}

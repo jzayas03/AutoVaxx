@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "lowercase_sentence",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "the synthetic reception clock displays eleven thirty."
+    }
+  ]
+}

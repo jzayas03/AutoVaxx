@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "punctuation",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The synthetic label reads: Amber (temporary)."
+    }
+  ]
+}

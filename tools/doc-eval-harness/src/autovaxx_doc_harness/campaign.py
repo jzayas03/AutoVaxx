@@ -17,7 +17,14 @@ from pydantic import Field, ValidationError, model_validator
 from .errors import ManifestError, ProvenanceError
 from .manifest import SourceCatalog, load_manifest
 from .metrics import CategoryCounts, calculate_injection_metrics, calculate_recall
-from .models import BudgetPolicy, ExtractionEnvelope, Finding, Identifier, StrictModel
+from .models import (
+    BudgetPolicy,
+    ExtractionEnvelope,
+    Finding,
+    Identifier,
+    SourcePurpose,
+    StrictModel,
+)
 from .ollama import ApprovedModel, OllamaProvider
 from .output import SecureOutputRoot
 from .provenance import build_verified_finding_index
@@ -47,6 +54,13 @@ class GroundTruth(StrictModel):
     category: Identifier
     malicious: bool
     expected_findings: Annotated[list[ExpectedFinding], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def unique_expected_findings(self) -> GroundTruth:
+        entries = [(finding.source_id, finding.exact_quote) for finding in self.expected_findings]
+        if len(entries) != len(set(entries)):
+            raise ValueError("expected findings must be unique")
+        return self
 
 
 class _CapturingProvider(DocumentationProvider):
@@ -242,13 +256,25 @@ def run_campaign(
 
 def _load_cases(fixtures_root: Path) -> list[tuple[Path, GroundTruth]]:
     cases: list[tuple[Path, GroundTruth]] = []
+    seen_case_ids: set[str] = set()
+    seen_corpus_fingerprints: set[str] = set()
     for path in sorted(fixtures_root.iterdir()):
         if not path.is_dir():
             continue
         manifest_path = path / "manifest.json"
         truth_path = path / "ground_truth.json"
         if manifest_path.is_file() and truth_path.is_file():
-            cases.append((path, GroundTruth.model_validate_json(truth_path.read_bytes())))
+            truth = GroundTruth.model_validate_json(truth_path.read_bytes())
+            catalog = load_manifest(manifest_path, path, BudgetPolicy())
+            if catalog.manifest.case_id in seen_case_ids:
+                raise ValueError("campaign case_id values must be unique")
+            seen_case_ids.add(catalog.manifest.case_id)
+            _expected_spans(catalog, truth)
+            fingerprint = _corpus_fingerprint(catalog)
+            if fingerprint in seen_corpus_fingerprints:
+                raise ValueError("campaign cases must contain independent evidence corpora")
+            seen_corpus_fingerprints.add(fingerprint)
+            cases.append((path, truth))
     if not cases:
         raise ValueError("fixture root contains no complete campaign cases")
     return cases
@@ -257,13 +283,23 @@ def _load_cases(fixtures_root: Path) -> list[tuple[Path, GroundTruth]]:
 def _expected_spans(catalog: SourceCatalog, truth: GroundTruth) -> set[tuple[str, int, int]]:
     expected: set[tuple[str, int, int]] = set()
     for finding in truth.expected_findings:
-        raw = catalog.get(finding.source_id).raw
+        source = catalog.get(finding.source_id)
+        if source.declaration.purpose is not SourcePurpose.EVIDENCE:
+            raise ValueError("ground-truth findings must reference evidence sources")
+        raw = source.raw
         quote = finding.exact_quote.encode("utf-8")
         if raw.count(quote) != 1:
             raise ValueError("ground-truth quote must occur exactly once in its source")
         start = raw.index(quote)
         expected.add((finding.source_id, start, start + len(quote)))
     return expected
+
+
+def _corpus_fingerprint(catalog: SourceCatalog) -> str:
+    """Identify renamed copies without treating case metadata as independent evidence."""
+    payload = sorted(source.sha256 for source in catalog.evidence)
+    serialized = json.dumps(payload, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def _verified_spans(

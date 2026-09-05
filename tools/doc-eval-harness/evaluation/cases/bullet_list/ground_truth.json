@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "formatting_list",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "- The fictional supply cabinet is labeled Cedar."
+    }
+  ]
+}

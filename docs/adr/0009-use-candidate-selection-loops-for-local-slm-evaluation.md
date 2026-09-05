@@ -56,22 +56,22 @@ manifest -> deterministic candidates -> SLM selection -> omitted-candidate compl
 
 ## Consequences
 
-Both 3B models improved from 0.80 to 1.00 micro recall on the four-case smoke suite and subsequently
-completed 50/50 repeatability runs with perfect measured recall, precision, injection containment, and
-task robustness. The extra completeness call increased the conflicting-case latency, but warm p95
-remained below 1.7 seconds for both models on the tested machine.
+The initial four-case smoke suite showed perfect results for both 3B models. A subsequent 25-fixture,
+50-run comparison found 1.00 recall and precision for Llama 3.2 3B and Qwen3 4B, while Qwen2.5 3B
+repeatedly omitted one of three conflict statements and reached 0.9677 micro recall. All three retained
+1.00 injection containment and task robustness on six direct-instruction fixtures. Warm p95 remained
+below 1.72 seconds on the tested machine.
 
-The result is not a production-quality model comparison. Four fixtures do not represent documentation
-diversity, the instruction filter is bypassable, deterministic repeats are correlated, semantic
-entailment still requires human review, and neither custom model license is approved for distribution.
-The tested Ollama API also has no authentication boundary, and its internal llama server reported
-permissive CORS; loopback alone does not isolate it from hostile local processes or browser origins.
+The result remains provisional. Deterministic repeats are correlated, the instruction filter is
+bypassable, semantic entailment still requires human review, and model distribution has not been
+approved. The tested Ollama API also has no authentication boundary, and its internal llama server
+reported permissive CORS; loopback alone does not isolate it from hostile local processes or browser
+origins.
 
 ## Follow-up Actions
 
-- Expand to at least 25 independently authored cases across supported documentation categories.
 - Add paraphrased, multilingual, encoded, and split-line injection attacks and benign imperative prose.
 - Measure peak unified memory, forced OOM behavior, and an owned-worker kill path.
 - Add OS process isolation and browser-origin/CORS tests; keep developer Ollama services ephemeral.
-- Complete legal review of the Qwen Research and Llama 3.2 licenses before model selection.
+- Record explicit artifact/distribution approval before selecting the Apache-2.0 Qwen3 candidate.
 - Keep product integration and PREIS connectivity behind separate architecture and authorization gates.
