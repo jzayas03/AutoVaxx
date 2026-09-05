@@ -94,9 +94,9 @@ The MVP is a local desktop modular monolith. It does not include cloud services,
 8. Re-authenticated administration confirmation.
 9. Finalization, correction, void, and complete audit timeline.
 10. Registry-readiness mapping and inspectable artifact for one verified PREIS profile version, without production transmission.
-11. Ollama structured-proposal adapter and whisper.cpp transcription adapter, both optional, local-only, and non-retentive for raw prompt/response/audio by default.
+11. Private-IPC, app-owned, Windows-sandboxed local-inference worker and a separately bounded whisper.cpp transcription adapter, both optional and non-retentive for raw prompt/response/audio by default. Ollama remains a synthetic developer-evaluation dependency.
 
-Planning detail: [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md) defines the proposed Rust-owned assistance graph and synthetic evaluation loop. It is approved for planning only and does not authorize Phase 2 implementation.
+Planning detail: [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md) defines the proposed Rust-owned assistance graph and synthetic evaluation loop. [ADR-0010](adr/0010-use-a-private-ipc-owned-worker-for-patient-bearing-local-ai.md) defines the required patient-bearing worker boundary. Both are approved for planning only and do not authorize Phase 2 implementation.
 
 ### UX priorities
 
@@ -127,6 +127,7 @@ Planning detail: [Assist Graph and Bounded Loops Plan](ASSIST_GRAPH_PLAN.md) def
 
 - Complete deployment-specific risk analysis and update the threat model.
 - Penetration test Tauri IPC/capabilities, local auth, session behavior, import parsing, network controls, and provider isolation.
+- Exercise the owned-worker AppContainer, Job Object, private-handle IPC, process-tree termination, browser-origin denial, filesystem/credential denial, and resource limits with adversarial synthetic helpers.
 - Inspect operational logs, crash artifacts, temp directories, process lists, clipboard behavior, backups, and support bundles for synthetic PHI leakage.
 - Fuzz enabled parsers and IPC boundaries.
 - Run power-loss, disk-full, corrupted-database, unavailable-keychain, interrupted-migration, and restore drills.
@@ -201,7 +202,7 @@ Each is a separate product decision, not an automatic continuation:
 - Barcode scanning and lightweight lot availability support.
 - Facility-approved print or EHR export adapters.
 - Improved bilingual content and accessibility.
-- Local model/runtime packaging or llama.cpp adapter.
+- Alternate local model/runtime packaging or provider adapters after the ADR-0010 worker candidate is validated.
 - Multi-workstation discovery and architecture.
 
 ### Multi-workstation discovery gate

@@ -157,11 +157,11 @@ The MVP target is a registry-ready record and inspectable export artifact. Live 
 
 - **FR-AI-001:** Accept typed notes or locally generated transcripts and propose structured values with source spans and confidence/uncertainty indicators.
 - **FR-AI-002:** Require human review before accepting any proposed value into the clinical draft.
-- **FR-AI-003:** Use a Rust provider interface. The initial adapter targets a loopback-only Ollama instance; a later adapter may target llama.cpp.
-- **FR-AI-004:** Reject non-loopback AI endpoints when a request contains patient data.
+- **FR-AI-003:** Use a Rust provider interface. Ollama is limited to synthetic developer evaluation. Any patient-bearing product adapter must target an app-owned, Windows-sandboxed worker over bounded private IPC with no listening socket; a minimal llama.cpp-based worker is the first implementation candidate, not an approved runtime.
+- **FR-AI-004:** Give a patient-bearing AI worker no network capability. Reject any provider topology that exposes an unauthenticated local endpoint or resolves outside the owned private-IPC boundary.
 - **FR-AI-005:** Do not give AI tools that write clinical records, change workflow state, authorize export, or access arbitrary files/network resources.
 - **FR-AI-006:** Do not persist prompts, model context, or raw model responses unless an approved feature explicitly requires it; if retained, treat them as PHI and store them encrypted with a retention policy.
-- **FR-AI-007:** Enforce an absolute provider deadline. Abort and quarantine externally provisioned providers; hard-terminate an app-owned child process tree after cooperative cancellation fails. Neither path may mutate clinical state or block manual documentation.
+- **FR-AI-007:** Enforce an absolute provider deadline. Hard-terminate the app-owned worker Job Object after cooperative cancellation fails and verify the complete process tree exited. A failed termination disables assistance until a clean application restart. No failure path may mutate clinical state or block manual documentation.
 - **FR-AI-008:** Verify the runtime model digest against the approved synthetic-evaluation manifest before patient-bearing inference and record the model digest plus prompt-template hash in minimum accepted-proposal provenance.
 - **FR-AI-009:** Route provider out-of-memory and isolated provider-runtime disk-full failures directly to manual fallback without retry/repair. Treat unknown/shared-volume or clinical persistence exhaustion as a blocking integrity failure.
 - **FR-SP-001:** Use a speech-provider interface with whisper.cpp as the initial provider.
@@ -222,7 +222,7 @@ Targets are hypotheses until measured with representative, synthetic workflows:
 - Vaccine administration confirmation and complete documentation.
 - Append-only corrections and audit history.
 - Registry-readiness validation and a local, inspectable export candidate.
-- Ollama and whisper.cpp adapters with graceful unavailable states.
+- A private-IPC owned-worker AI adapter and whisper.cpp adapter with graceful unavailable states; Ollama remains a synthetic developer-evaluation dependency only.
 - Encrypted local storage, encrypted backup/restore, and operational log redaction.
 
 ### Explicitly deferred
@@ -232,7 +232,7 @@ Targets are hypotheses until measured with representative, synthetic workflows:
 - Cloud hosting, cloud backup, cloud AI, patient portal, scheduling, billing/claims, e-prescribing, and full inventory management.
 - Autonomous vaccine recommendation, diagnosis, administration, finalization, or submission.
 - Clinical eligibility, recommendation, forecasting, contraindication, or precaution logic until a separately versioned rule package is clinically approved and validated.
-- Semantic barcode/product lookup beyond a bounded proposal flow, retained raw audio, app-managed model downloads, device-specific signature capture, and additional production OS targets beyond the first approved target.
+- Semantic barcode/product lookup beyond a bounded proposal flow, retained raw audio, automatic model downloads, externally provisioned patient-bearing model services, device-specific signature capture, and additional production OS targets beyond the first approved target.
 - Automatic patient merge or historical-record deletion.
 
 ## 9. Success measures

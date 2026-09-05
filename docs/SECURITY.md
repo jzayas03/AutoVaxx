@@ -123,20 +123,23 @@ HHS breach guidance says valid at-rest encryption should be consistent with NIST
 
 ## 7. Local AI and speech isolation
 
-- Patient data may be sent only to an approved local provider bound to loopback or invoked as a controlled child process.
-- Reject hostnames/addresses that resolve outside loopback. Avoid configurable proxies for PHI-bearing model calls.
+- Ollama is limited to ephemeral synthetic developer evaluation. Its unauthenticated local HTTP API is not approved for patient-bearing product use.
+- Patient-bearing AI may run only in an app-owned worker over private inherited pipes with no listening socket. Create it suspended with AppContainer security attributes, then verify Job Object assignment, the handle allowlist, minimal environment, and approved file grants before resume.
+- Give the worker no network capability, proxy configuration, browser-callable endpoint, registry/PREIS configuration, database handle, secret-store handle, application command channel, or arbitrary tool interface.
 - The frontend never calls model providers directly.
 - Do not enable Ollama cloud endpoints, remote model URLs, provider telemetry, or cloud fallback for patient workflows.
 - Restrict model requests to the minimum context. Never expose the database, arbitrary filesystem, registry credentials, or application tools to the model.
 - Validate model output as untrusted data: schema, size, encoding, allowed fields, code values, and source/provenance.
 - Separate proposed values visually and structurally from accepted data. Human acceptance is an audited draft edit.
 - Pin the approved provider/model digest and verify the runtime-reported digest at readiness and before the first patient-bearing assist session. A mismatch is policy denied; do not silently pull or substitute a model.
-- Enforce one absolute wall-clock deadline. Abort and quarantine a separately provisioned provider without killing the facility-managed service. A future app-owned child process must be isolated in a Windows Job Object and hard-terminated, with exit verified, if cooperative cancellation exceeds the deadline.
+- Enforce one absolute wall-clock deadline. Hard-terminate the no-breakaway Windows Job Object, and verify complete process-tree exit, if cooperative cancellation exceeds the deadline. A failed termination disables assistance until a clean application restart.
 - Route provider `OUT_OF_MEMORY` and provider-runtime `DISK_FULL` directly to manual fallback without retry or structural repair. Classify disk exhaustion as provider-side only after confirming that the failure is isolated and clinical persistence remains healthy; otherwise treat it as blocking `PERSISTENCE_FULL`. Never report a mutation as successful when durable storage is unavailable.
 - Do not persist raw prompts, interview text/transcripts, model responses, rejected proposals, or source spans after review by default. Retain only minimum provider/model/schema provenance, the model digest, prompt-template identifier/version/hash, field names, reviewer disposition, and the resulting clinical revision reference.
 - Process speech locally through bounded RAM or anonymous pipes when possible. If a provider requires a temporary file, write only ciphertext using a fresh per-session key held outside the file, a random non-identifying name, restrictive ACLs, bounded size/duration, and no path in logs or process arguments. Sanitize the key, delete the ciphertext, and perform validated orphan cleanup after success, failure, cancellation, timeout, lock/logout, or crash recovery. Do not claim that ordinary overwrite sanitizes SSD media.
 - Prefer a controlled whisper.cpp child process or reviewed binding. If a server is used, bind to loopback, authenticate where supported, sandbox it, and prohibit broad CORS/network access.
-- Model binaries and weights are software supply-chain inputs: verify source, license, checksum/signature, version, and supported hardware before installation.
+- Model binaries and weights are software supply-chain inputs: verify source, license, checksum/signature, version, and supported hardware before installation. Do not download or update them while a patient context is open.
+- Scope one worker to one authenticated assist session and one patient/encounter context. Terminate and verify it on completion, cancellation, context change, logout, lock, application exit, or policy failure.
+- A Job Object is a lifecycle/resource control, not a security sandbox. Use AppContainer with no network capability and only exact approved read-only runtime/model access; if representative hardware or the runtime cannot support that boundary, keep product AI disabled.
 
 ## 8. Tauri and frontend controls
 
@@ -210,7 +213,7 @@ Crash reporting is local-only by default. Support bundles require preview/redact
 - Recover exact workflow state after process or power loss, especially after administration confirmation.
 - Perform pre-migration encrypted backup, free-space check, checksum, migration, integrity check, and safe cutover.
 - Make model outages non-blocking for deterministic documentation.
-- Verify that external-provider abort/quarantine and app-owned process-tree termination return control within the approved time-to-fallback target.
+- Verify that cooperative cancellation, app-owned process-tree termination, and failed-termination quarantine return control within the approved time-to-fallback target.
 - Make registry outages explicit and retryable; never lose a finalized record because transmission failed.
 - Document downtime workflow, backup frequency, recovery time/recovery point objectives, responsible roles, and paper reconciliation before pilot.
 - Provide a tested process for lost/stolen devices, account compromise, suspected data corruption, and unavailable keychain.
@@ -235,7 +238,7 @@ Before real PHI:
 3. Encrypted database, Windows secret-store integration, encrypted backup, key-loss, migration, and restore tests pass on representative Windows 11 x64 hardware.
 4. Authorization matrix tests call Rust commands directly to prove UI bypass does not work.
 5. Administration confirmation, clinical override, correction/void, and disclosure require correct role and recent authentication.
-6. Network tests deny non-loopback AI/speech and non-allowlisted outbound destinations.
+6. Network tests prove the AI worker has no network capability or listening endpoint; speech and future external adapters deny non-approved destinations.
 7. Log/crash/temp/clipboard/support-bundle reviews find no synthetic PHI leakage.
 8. Rule/content package signature, rollback, and stale-content behaviors pass.
 9. Fuzz/property tests cover IPC payloads and enabled import/HL7 parsers.
@@ -243,8 +246,9 @@ Before real PHI:
 11. External security review and penetration test findings are resolved or formally accepted.
 12. Incident response, breach assessment, downtime, retention, media disposal, and workforce procedures are approved.
 13. Production startup proves encrypted database, Windows SecretStore, non-development authentication, production logging, approved schema, required security configuration, and an explicit compile-time `real-phi` entitlement; no runtime checkbox can bypass them. The entitlement is not enabled in Phase 1.
-14. Provider tests verify the approved model digest, prompt-template hash provenance, dual-mode cancellation, resource-exhaustion routing, and no automatic restart after failed hard termination.
+14. Provider tests verify the approved worker/model digest, prompt-template hash provenance, cooperative and hard cancellation, resource-exhaustion routing, and no automatic restart after failed hard termination.
 15. Temporary-assist tests prove RAM/pipe-first handling, ciphertext-only fallback files, key sanitization, restrictive ACLs, orphan cleanup, and no synthetic PHI in pagefile/crash/support evidence collected under the approved Windows policy.
+16. Owned-worker tests prove pre-execution AppContainer and Job Object enforcement, no breakaway descendants, no network or unintended file/credential access, allowlisted handle inheritance, framed-IPC bounds, complete termination, and no inference listener reachable from the Tauri webview, an ordinary browser origin, or another same-user process.
 
 Before PREIS transmission:
 
@@ -261,7 +265,7 @@ Before PREIS transmission:
 | SEC-001 | **Encrypt the database and backups before real PHI; keep keys separate in the OS credential store.** Device theft/database copying is a primary local-first risk. | Rely only on full-disk encryption; user-password-derived database key; plaintext SQLite. | Key loss, keychain compromise, native packaging complexity. | Hardware-backed keys or enterprise key escrow after a deployment risk review. |
 | SEC-002 | **Named local accounts with Rust-enforced roles and re-authentication.** Clinical accountability requires attributable actions. | Shared workstation account; OS login only; frontend checks. | Local account recovery/support burden; shared OS sessions still create risk. | Federated facility identity with device-bound sessions in multi-workstation mode. |
 | SEC-003 | **Network deny-by-default with explicit per-disclosure authorization.** Enforces the local-first promise and makes PHI outflow visible. | Broad network permission; automatic sync; air-gapped forever. | Deferred submissions and user friction; configuration mistakes. | Policy-approved scheduled transmission with constrained destination, purpose, and audit after certification. |
-| SEC-004 | **Loopback-only AI/speech with no cloud fallback.** Preserves PHI locality while allowing assistance. | Cloud APIs; user-configurable endpoints; no AI. | Local service exposure, provider logs, model unreliability. | Reviewed in-process runtimes or managed local facility inference service with mutual authentication. |
+| SEC-004 | **Private-IPC, app-owned patient-bearing AI with no network capability or cloud fallback.** Ollama is synthetic-evaluation-only; AppContainer limits authority and a Job Object owns lifecycle/resources under [ADR-0010](adr/0010-use-a-private-ipc-owned-worker-for-patient-bearing-local-ai.md). | Separately provisioned loopback service; app-owned HTTP server; in-process runtime; no AI. | Native sandbox/GPU compatibility, worker/model supply chain, memory pressure, provider logs, and model unreliability. | Managed facility inference service with mutual authentication or a reviewed in-process runtime through a new ADR. |
 | SEC-005 | **No PHI in operational logs; clinical/audit detail remains encrypted.** Reduces leakage through support and crash channels. | Log full payloads for debugging; disable all logs. | Harder diagnosis; accidental sensitive error strings. | Structured safe diagnostics and authorized on-device inspection, never broad PHI telemetry. |
 | SEC-006 | **Tauri capabilities and commands follow least privilege.** The webview is not trusted with storage, secrets, or arbitrary I/O. | Generic shell/filesystem/HTTP plugins; direct frontend database. | Capability drift and IPC injection. | Automated capability diffing and isolation into separate windows/processes if features expand. |
 | SEC-007 | **Signed/versioned application, rule, terminology, and VIS content.** Clinical correctness and supply-chain integrity require known inputs. | Online latest-at-runtime; unsigned local files. | Key/signing operations and offline update logistics. | Enterprise distribution/update service with staged rollout and rollback. |
