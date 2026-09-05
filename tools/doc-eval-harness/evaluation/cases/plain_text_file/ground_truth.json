@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "plain_text",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The fictional paper form is stored in drawer twelve."
+    }
+  ]
+}

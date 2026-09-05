@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "emoji_utf8",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The synthetic blue folder is marked with 📘."
+    }
+  ]
+}

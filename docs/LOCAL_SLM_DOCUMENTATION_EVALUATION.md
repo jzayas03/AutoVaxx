@@ -2,8 +2,9 @@
 
 ## Summary
 
-The local SLM approach works for bounded documentation tasks. Neither model is ready for AutoVaxx
-product selection, and PREIS access is categorically excluded from the SLM boundary.
+The local SLM approach works for bounded documentation tasks. Qwen3 4B is the provisional engineering
+front-runner, but no evaluated model is approved for AutoVaxx product integration. PREIS access is
+categorically excluded from the SLM boundary.
 
 *Note: This document is an informational evaluation summary and does not constitute durable
 acceptance evidence. Model and license digests are versioned in the
@@ -11,15 +12,26 @@ acceptance evidence. Model and license digests are versioned in the
 
 ## Results
 
-These metrics represent 50 deterministic repeatability runs across four fixtures, not 50 independent
-evaluations. Both models completed the evaluations without retries or schema repairs and were
-verifiably unloaded afterward. Qwen also passed while deliberately invalid proxy variables were
-configured, confirming the client ignored proxy settings and used its fixed loopback destination.
+These metrics represent 50 deterministic repeatability runs across 25 distinct synthetic fixtures,
+not 50 independent evaluations. Each model saw every fixture exactly twice. The fixture loader rejects
+duplicate case IDs and renamed copies of the same evidence corpus. All three models completed without
+transport retries or schema repairs, reached human review in 50/50 runs, and were verifiably unloaded.
+All campaigns ran with deliberately invalid proxy variables, confirming the fixed client ignored
+environment proxy settings and used its loopback destination.
 
-| Model | Human-review terminal | Micro recall | Micro precision | Injection containment | p50 | p95 |
+| Model | Micro recall | Macro recall | Micro precision | Injection containment / robustness | p50 | p95 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Qwen2.5 3B `Q4_K_M` | 50/50 | 1.00 | 1.00 | 1.00 | 1.043 s | 1.553 s |
-| Llama 3.2 3B `Q4_K_M` | 50/50 | 1.00 | 1.00 | 1.00 | 1.098 s | 1.692 s |
+| Qwen2.5 3B `Q4_K_M` | 0.9677 | 0.9895 | 1.00 | 1.00 / 1.00 | 1.211 s | 1.644 s |
+| Llama 3.2 3B `Q4_K_M` | 1.00 | 1.00 | 1.00 | 1.00 / 1.00 | 1.115 s | 1.713 s |
+| Qwen3 4B Instruct 2507 `Q4_K_M` | 1.00 | 1.00 | 1.00 | 1.00 / 1.00 | 1.330 s | 1.622 s |
+
+Qwen2.5 omitted one of the three statements in `ThreeSourceConflict` on both repetitions. It still
+cleared the provisional 0.95 recall threshold, but the repeatable miss makes it weaker than the two
+perfect-recall candidates on this corpus. The report SHA-256 values are
+`b6b9f43363c27a9bd3952e6cbfd210ed684a65d4cc824fbc08ceba0bfae0923b` (Qwen2.5),
+`dc930fe7d182fe0a8690bb872afa80fd720d630b7ee09c2926ceb85f03417fb6` (Llama 3.2), and
+`c562dd8400e4dc609b77f86cc84e64fa37aa41b7b0521207070797a28341ce4a` (Qwen3); full reports remain
+ephemeral local evidence outside the repository.
 
 ## Hybrid Workflow
 
@@ -38,19 +50,21 @@ operations:
 
 ## Open Gates and Next Actions
 
-Continue with 3B models and the explicit Python graph. An 8B critic is not justified by current
-evidence. **Do not choose a production model yet** for the following reasons:
+Continue with the explicit Python graph. An 8B critic is not justified by current evidence.
+**Do not choose a production model yet.** The 25-fixture and model-comparison gates are closed, but
+these gates remain open:
 
-- **Insufficient test data:** Only four independent fixtures exist; the contract requires at least 25.
-- **Licensing constraints:** Qwen has a slight measured latency advantage, but its official model
-  repository uses the [Qwen Research License](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct/blob/main/LICENSE),
-  which limits the grant to non-commercial purposes and directs commercial users to request a separate
-  license. This makes it unsuitable as AutoVaxx's commercial default without new licensing authority.
-  Llama 3.2 uses the custom
-  [Llama 3.2 model and license](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct), which includes
-  redistribution and attribution conditions that require legal review but present a different
-  commercial posture.
-- **Next action:** Compare at least one genuinely permissively licensed small model.
+- **Distribution approval:** [Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507)
+  declares Apache-2.0 and is the provisional front-runner. The evaluated local alias
+  `qwen3-autovaxx:4b-instruct-2507-q4-k-m` maps to Ollama's upstream
+  `qwen3:4b-instruct-2507-q4_K_M` artifact. Its exact digest and license-text digest are pinned, but
+  `distribution_license_approved` remains false until AutoVaxx explicitly accepts the artifact.
+- **Product isolation:** Peak unified-memory pressure, forced-OOM behavior, browser-origin isolation,
+  and an owned-worker kill path remain unverified. A developer-managed Ollama service is not an
+  acceptable product security boundary.
+- **Adversarial breadth:** The six malicious fixtures cover direct instruction families. Paraphrased,
+  multilingual, encoded, and split-line attacks plus benign imperative controls remain future work.
+- **Next action:** Specify and test the Rust-owned Windows worker boundary before any product wiring.
 
 ## PREIS Boundary
 
@@ -73,9 +87,9 @@ requires OS process isolation, browser-origin/CORS tests, and an owned-worker te
 
 ## Implemented Files
 
-*Note: 52 tests passed; Ruff, strict mypy, dependency-lock verification, and the offline wheel/source
-build passed. Reports use `0700` directories and `0600` files. Work remains uncommitted on
-`feat/local-doc-eval-harness`.*
+*Note: 57 harness tests passed with Ruff and strict mypy. Campaign reports used `0700` directories and
+`0600` files. The temporary Ollama service was stopped after testing. These changes are proposed on
+`feat/local-doc-eval-25-fixtures`.*
 
 - [Implementation contract](LOCAL_DOCUMENTATION_HARNESS_IMPLEMENTATION_CONTRACT.md)
 - [Candidate-selection ADR](adr/0009-use-candidate-selection-loops-for-local-slm-evaluation.md)

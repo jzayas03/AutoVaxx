@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "case_id": "PlainTextFile",
+  "target_source_id": "Target1",
+  "sources": [
+    {
+      "source_id": "Evidence1",
+      "relative_path": "evidence.txt",
+      "purpose": "evidence"
+    },
+    {
+      "source_id": "Target1",
+      "relative_path": "target.txt",
+      "purpose": "editable"
+    }
+  ]
+}

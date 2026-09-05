@@ -15,8 +15,10 @@ uv audit --locked
 ```
 
 The model approval file pins the installed model's full digest, GGUF parameter-size label, and hash of
-its runtime license text. Do not change those values merely to make a probe pass. Start a developer-owned
-service with cloud features disabled:
+its runtime license text. Do not change those values merely to make a probe pass. The Qwen3 entry uses
+the lowercase local alias `qwen3-autovaxx:4b-instruct-2507-q4-k-m` for Ollama's upstream
+`qwen3:4b-instruct-2507-q4_K_M` tag because approval identifiers intentionally reject uppercase model
+tags. Start a developer-owned service with cloud features disabled:
 
 ```sh
 OLLAMA_NO_CLOUD=1 OLLAMA_HOST=127.0.0.1:11434 ollama serve
@@ -46,6 +48,10 @@ entries use custom licenses; review and approve a license before distributing a 
 
 The provider rejects more than 64 selectable candidates or 12,288 bytes of combined generation input
 before transport. These pilot limits bound work; they do not replace tokenizer-aware context checks.
+
+The committed campaign corpus contains 25 distinct synthetic cases. The loader rejects duplicate case
+IDs and renamed copies with identical evidence-corpus fingerprints; the test suite enforces the
+minimum fixture, category, and malicious-case counts.
 
 The full authorization and security boundary is in
 `../../docs/LOCAL_DOCUMENTATION_HARNESS_IMPLEMENTATION_CONTRACT.md`.

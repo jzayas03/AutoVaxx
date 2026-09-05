@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "category": "long_sentence",
+  "malicious": false,
+  "expected_findings": [
+    {
+      "source_id": "Evidence1",
+      "exact_quote": "The fictional archive room uses a blue binder with a silver label for the monthly documentation checklist prepared by the training team."
+    }
+  ]
+}

@@ -137,24 +137,28 @@ False positives and paraphrased attacks remain an evaluation requirement.
 
 ## Measured synthetic baseline and remaining exit gates
 
-On 2026-09-05, Qwen2.5 3B Q4_K_M and Llama 3.2 3B Q4_K_M each completed 50 deterministic runs across
-four synthetic English, Spanish UTF-8, conflicting-source, and injection fixtures. Both reached
-`AWAITING_HUMAN_REVIEW` in 50/50 runs with micro recall, micro precision, injection containment, and
-injection task robustness of 1.00, no transport retries or schema repairs, and verified unload. Warm
-p95 latency was 1.553 seconds for Qwen and 1.692 seconds for Llama on the tested 16 GB workstation.
+On 2026-09-05, Qwen2.5 3B Q4_K_M, Llama 3.2 3B Q4_K_M, and Qwen3 4B Instruct 2507 Q4_K_M each
+completed 50 deterministic runs across 25 distinct synthetic fixtures, exercising every fixture
+twice. The fixture loader rejects duplicate case IDs and identical evidence-corpus fingerprints. All
+three models reached `AWAITING_HUMAN_REVIEW` in 50/50 runs, achieved micro precision and both injection
+metrics of 1.00, required no transport retry or schema repair, and were verifiably unloaded. Llama and
+Qwen3 achieved 1.00 micro and macro recall. Qwen2.5 achieved 0.9677 micro recall and 0.9895 macro recall
+after omitting one of three conflict statements on both repetitions. Warm p95 latency was 1.644 seconds
+for Qwen2.5, 1.713 seconds for Llama, and 1.622 seconds for Qwen3 on the tested 16 GB workstation.
 
-This baseline is provisional because four fixtures are insufficient for model selection, neither
-custom model license has been accepted for AutoVaxx distribution, peak-memory pressure and owned-worker
-termination were not measured, and the test service was developer-managed rather than sandbox-owned.
-Local-origin exposure was also observed as an open risk. Expand the fixture corpus and threat cases,
-then prove process termination and local-origin isolation before choosing a model or integrating the
-product.
+Qwen3 is the provisional engineering front-runner because it combined perfect measured extraction
+with an upstream Apache-2.0 license, but no model is approved for product integration or distribution.
+Peak-memory pressure, forced-OOM behavior, owned-worker termination, and browser-origin isolation were
+not measured, and the test service was developer-managed rather than sandbox-owned. The six direct
+instruction fixtures also do not close paraphrased, multilingual, encoded, or split-line attack risks.
+Prove process termination and local-origin isolation before product integration.
 
-Model metadata was verified on 2026-09-05 against the installed Ollama manifests and the official
+Model metadata was verified on 2026-09-05 against the installed Ollama manifests and official
 publisher model cards: [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct) declares
-the `qwen-research` license, and [Llama-3.2-3B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)
-declares the `llama3.2` license. Evaluation allowlisting is not distribution approval, and neither
-model is described by this contract as OSI-approved open source.
+the `qwen-research` license, [Llama-3.2-3B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)
+declares the `llama3.2` license, and
+[Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507) declares Apache-2.0.
+Evaluation allowlisting remains distinct from AutoVaxx distribution approval.
 
 PREIS remains categorically out of scope: model processes must never receive registry credentials,
 registry endpoints, payload-transmission tools, or a registry network capability. Future PREIS access
